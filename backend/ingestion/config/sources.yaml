@@ -1,0 +1,45 @@
+# Config-driven sources. Only enabled entries run.
+# Live scrapers/APIs are stubs until credentials exist; CSV is the working path.
+
+sources:
+  - id: seed_csv_research
+    enabled: true
+    source_type: manual
+    adapter: csv
+    category: research
+    path: ingestion/config/sample_research.csv
+    categories: [research]
+
+  - id: employment_manual_csv
+    enabled: false
+    source_type: manual
+    adapter: csv
+    category: employment
+    path: ingestion/config/sample_employment.csv
+    categories: [employment]
+
+  - id: experiential_manual_csv
+    enabled: false
+    source_type: manual
+    adapter: csv
+    category: experiential
+    path: ingestion/config/sample_experiential.csv
+    categories: [experiential]
+
+  - id: eventbrite_api
+    enabled: false
+    source_type: api
+    adapter: eventbrite
+    categories: [professional_dev, experiential]
+
+  - id: opportunity_desk_scrape
+    enabled: false
+    source_type: scrape
+    adapter: opportunity_desk
+    categories: [research, academic]
+
+  - id: grant_pdf_parse
+    enabled: false
+    source_type: pdf_parse
+    adapter: grant_notices
+    categories: [research, academic]

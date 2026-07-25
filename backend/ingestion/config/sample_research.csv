@@ -1,0 +1,4 @@
+title,description,category,organization,tags,location,requirements,why_summary,deadline,source_id,citizenship,effort_estimate,value_estimate,status
+Africa Research Fellowship 2026,Twelve-month fellowship for early-career researchers.,research,Africa Research Network,fellowship|research|public health|funding,Nairobi,Master's or equivalent,Funded research time plus a peer network.,2026-12-01,csv:arn-fellowship-dup,KE|NG|GH|ZA,0.7,0.9,live
+Africa Research Fellowship 2026 (Opportunity Desk mirror),Same fellowship mirrored on an aggregator.,research,Africa Research Network,fellowship|research|funding,Nairobi,Master's,Duplicate listing for dedup test.,2026-12-01,csv:arn-fellowship-mirror,KE|NG,0.7,0.9,live
+Expired climate grant notice,Past-deadline grant for expiry check.,research,Climate Fund Africa,grant|climate|funding,Remote,Open to African researchers,Should expire on normalize.,2020-01-15,csv:expired-climate-grant,,0.6,0.8,live

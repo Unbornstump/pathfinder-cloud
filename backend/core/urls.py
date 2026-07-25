@@ -1,0 +1,67 @@
+from django.urls import path
+
+from .views import (
+    ApplyOpportunityView,
+    ConfigView,
+    CookieTokenObtainPairView,
+    CookieTokenRefreshView,
+    DismissOpportunityView,
+    DustView,
+    GoogleAuthView,
+    InterestCountView,
+    LogoutView,
+    MarkNotificationReadView,
+    MatchedOpportunitiesView,
+    MovesListView,
+    NotificationListView,
+    OpportunityListView,
+    ProfileView,
+    RegisterView,
+    SaveOpportunityView,
+)
+
+urlpatterns = [
+    path("config/", ConfigView.as_view(), name="config"),
+    path("token/", CookieTokenObtainPairView.as_view(), name="token_obtain"),
+    path("token/refresh/", CookieTokenRefreshView.as_view(), name="token_refresh"),
+    path("auth/register/", RegisterView.as_view(), name="register"),
+    path("auth/google/", GoogleAuthView.as_view(), name="google_auth"),
+    path("auth/logout/", LogoutView.as_view(), name="logout"),
+    path("profile/", ProfileView.as_view(), name="profile"),
+    path("profile/dust/", DustView.as_view(), name="profile_dust"),
+    path("profile/scout/", DustView.as_view(), name="profile_scout"),
+    path("opportunities/", OpportunityListView.as_view(), name="opportunities"),
+    path(
+        "opportunities/matched/",
+        MatchedOpportunitiesView.as_view(),
+        name="opportunities_matched",
+    ),
+    path("matches/", MatchedOpportunitiesView.as_view(), name="matches"),
+    path("moves/", MovesListView.as_view(), name="moves"),
+    path(
+        "opportunities/<int:pk>/save/",
+        SaveOpportunityView.as_view(),
+        name="opportunity_save",
+    ),
+    path(
+        "opportunities/<int:pk>/apply/",
+        ApplyOpportunityView.as_view(),
+        name="opportunity_apply",
+    ),
+    path(
+        "opportunities/<int:pk>/dismiss/",
+        DismissOpportunityView.as_view(),
+        name="opportunity_dismiss",
+    ),
+    path(
+        "opportunities/<int:pk>/interest-count/",
+        InterestCountView.as_view(),
+        name="opportunity_interest_count",
+    ),
+    path("notifications/", NotificationListView.as_view(), name="notifications"),
+    path(
+        "notifications/<int:pk>/read/",
+        MarkNotificationReadView.as_view(),
+        name="notification_read",
+    ),
+]

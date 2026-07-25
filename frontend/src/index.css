@@ -1,0 +1,171 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  /* Dark shell + landing (joined chrome mockups) */
+  --color-page: #0c0c0d;
+  --color-shell: #1a1a1c;
+  --color-card: #222226;
+  --color-border: #2e2e32;
+  --color-border-strong: #3a3a40;
+  --color-ink: #f4f4f5;
+  --color-muted: #a1a1aa;
+  --color-label: #71717a;
+  --color-teal: #3b82f6;
+  --color-teal-dark: #2563eb;
+  --color-teal-light: #1e3a5f;
+  --color-trail: #5c5c64;
+  --color-trail-gold: #ba7517;
+  --color-academic: #60a5fa;
+  --color-employment: #3b82f6;
+  --color-research: #818cf8;
+  --color-professional: #fbbf24;
+  --color-experiential: #4ade80;
+  --color-social: #fb7185;
+  --color-entrepreneur: #fb923c;
+  --color-cultural: #a78bfa;
+  --color-attachment: #4ade80;
+  --color-urgent: #f87171;
+  --color-urgent-bg: #3f1d1d;
+  --color-verified: #4ade80;
+  --color-verified-bg: #14532d;
+  --radius-card: 12px;
+  --shell-rail: 4rem;
+  --shell-top: 3.5rem;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background: var(--color-page);
+  color: var(--color-ink);
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+}
+
+.landing-v2 {
+  --landing-serif: "Fraunces", Georgia, serif;
+  --landing-sans: "Inter", -apple-system, sans-serif;
+}
+
+.landing-v2 .font-mono {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+.landing-v2 ::selection {
+  background: #5b7cfa;
+  color: #0a0a0e;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-weight: 500;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+/* --- Motion language --- */
+
+@keyframes trail-drift {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 0 20px;
+  }
+}
+
+.trail-line {
+  width: 2px;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    var(--color-trail) 0 3px,
+    transparent 3px 9px
+  );
+  background-size: 2px 20px;
+  animation: trail-drift 10s linear infinite;
+}
+
+.trail-line-gold {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    var(--color-trail-gold) 0 3px,
+    transparent 3px 9px
+  );
+}
+
+@keyframes ease-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.ease-rise {
+  animation: ease-rise 0.45s ease-out both;
+}
+
+@keyframes quiet-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.urgency-pulse {
+  animation: quiet-pulse 2.8s ease-in-out infinite;
+}
+
+@keyframes dust-drift {
+  0%,
+  100% {
+    transform: translate(0, 0);
+    opacity: 0.55;
+  }
+  33% {
+    transform: translate(1px, -1.5px);
+    opacity: 0.85;
+  }
+  66% {
+    transform: translate(-1px, 1px);
+    opacity: 0.65;
+  }
+}
+
+.dust-particle {
+  animation: dust-drift 4.5s ease-in-out infinite;
+}
+
+.waypoint-marker {
+  transition:
+    background-color 0.35s ease,
+    border-color 0.35s ease,
+    color 0.35s ease;
+}
+
+.waypoint-icon {
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
