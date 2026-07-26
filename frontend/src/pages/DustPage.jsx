@@ -5,7 +5,9 @@ import { api } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import { useDust } from '../context/DustContext'
 import { typeMeta } from '../lib/utils'
+import { formatLocation } from '../lib/location'
 import DustAvatar from '../components/DustAvatar'
+import TrailSweepStatus from '../components/TrailSweepStatus'
 
 const QUICK_ACTIONS = [
   { label: 'Find funding', prompt: 'Help me find funding or grants that fit my background.' },
@@ -28,16 +30,58 @@ function hasProposal(msg) {
   )
 }
 
+function messageKind(msg) {
+  if (msg.role === 'user') return 'user'
+  if (msg.status === 'confirmed') return 'confirmed'
+  if (hasProposal(msg)) return 'proposal'
+  if (msg.kind === 'error' || msg.kind === 'fallback') return 'fallback'
+  if (msg.id === 'intro' || msg.id?.startsWith('intro')) return 'guidance'
+  return 'guidance'
+}
+
+function proposalFields(suggestions) {
+  const fields = []
+  if ((suggestions?.add_tags || []).length) {
+    fields.push({ label: 'Tags', value: suggestions.add_tags.join(', ') })
+  }
+  if ((suggestions?.enable_types || []).length) {
+    fields.push({
+      label: 'Types',
+      value: suggestions.enable_types.map((t) => typeMeta(t).short).join(', '),
+    })
+  }
+  if (suggestions?.profile_patch?.location) {
+    fields.push({ label: 'Location', value: suggestions.profile_patch.location })
+  }
+  if (suggestions?.profile_patch?.education_level) {
+    fields.push({ label: 'Education', value: suggestions.profile_patch.education_level })
+  }
+  if ((suggestions?.profile_patch?.interest_tags || []).length) {
+    fields.push({
+      label: 'Interest tags',
+      value: suggestions.profile_patch.interest_tags.join(', '),
+    })
+  }
+  if ((suggestions?.profile_patch?.desired_types || []).length) {
+    fields.push({
+      label: 'Desired types',
+      value: suggestions.profile_patch.desired_types.map((t) => typeMeta(t).short).join(', '),
+    })
+  }
+  return fields
+}
+
 /**
  * Dust’s dedicated room — context + persistent conversation.
- * Proposes; never writes without confirm.
+ * Uses shared theme tokens so light/dark match the rest of the shell.
  */
 export default function DustPage() {
-  const { profile, updateProfile, refreshMatches } = useAuth()
+  const { profile, saveProfileAndResweep } = useAuth()
   const { messages, setMessages, consumePendingAsk, pendingAsk } = useDust()
   const navigate = useNavigate()
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
+  const [workingLabel, setWorkingLabel] = useState('Sweeping…')
   const bottomRef = useRef(null)
   const sendingRef = useRef(false)
 
@@ -63,15 +107,22 @@ export default function DustPage() {
       ...m,
       { id: `u-${Date.now()}`, role: 'user', status: 'open', text: trimmed },
     ])
+    setWorkingLabel('Filtering intent…')
     setBusy(true)
     try {
       const data = await api('/profile/dust/', { method: 'POST', body: { message: trimmed } })
+      const hasProp = hasProposal({ suggestions: data.suggestions })
+      const reply = data.reply || ''
+      const looksSoft =
+        /couldn'?t|could not|not sure|try rephrasing|more specific/i.test(reply)
+      const kind = hasProp ? 'proposal' : looksSoft ? 'fallback' : 'guidance'
       setMessages((m) => [
         ...m,
         {
           id: `d-${Date.now()}`,
           role: 'dust',
           status: 'open',
+          kind,
           text: data.reply,
           suggestions: data.suggestions,
           mode: data.mode,
@@ -84,6 +135,7 @@ export default function DustPage() {
           id: `e-${Date.now()}`,
           role: 'dust',
           status: 'open',
+          kind: 'error',
           text: err.message || "Dust couldn't respond just now.",
         },
       ])
@@ -102,6 +154,7 @@ export default function DustPage() {
   async function applySuggestions(msg) {
     const suggestions = msg.suggestions
     if (!suggestions || !profile) return
+    setWorkingLabel('Applying to your trail…')
     setBusy(true)
     try {
       const patch = suggestions.profile_patch
@@ -151,8 +204,7 @@ export default function DustPage() {
         }
       }
 
-      await updateProfile(payload)
-      await refreshMatches()
+      await saveProfileAndResweep(payload)
       setMessages((m) =>
         m.map((item) => (item.id === msg.id ? { ...item, status: 'confirmed' } : item)),
       )
@@ -162,7 +214,8 @@ export default function DustPage() {
           id: `ok-${Date.now()}`,
           role: 'dust',
           status: 'confirmed',
-          text: 'Applied. Your trail is updated.',
+          kind: 'guidance',
+          text: 'Applied. Your trail is updated — sweeping for matches that fit.',
         },
       ])
       if (!profile.onboarding_complete) {
@@ -175,6 +228,7 @@ export default function DustPage() {
           id: `fail-${Date.now()}`,
           role: 'dust',
           status: 'open',
+          kind: 'error',
           text: err.message || 'Could not apply those changes.',
         },
       ])
@@ -183,23 +237,38 @@ export default function DustPage() {
     }
   }
 
+  function dismissProposal(msg) {
+    setMessages((m) =>
+      m.map((item) => (item.id === msg.id ? { ...item, status: 'skipped' } : item)),
+    )
+    setMessages((m) => [
+      ...m,
+      {
+        id: `adj-${Date.now()}`,
+        role: 'dust',
+        status: 'open',
+        kind: 'guidance',
+        text: 'Tell me what to adjust and I’ll propose again.',
+      },
+    ])
+  }
+
   const trailBits = [
     profile?.education_level,
-    profile?.location,
+    formatLocation(profile?.location),
     ...(profile?.interest_tags || []).slice(0, 3),
     ...(profile?.desired_types || []).slice(0, 2).map((t) => typeMeta(t).short),
   ].filter(Boolean)
 
   return (
-    <div className="mx-auto flex h-[calc(100vh-5.5rem)] max-w-5xl flex-col px-4 py-4 md:px-8">
+    <div className="mx-auto flex h-[calc(100%-0.5rem)] min-h-[28rem] max-w-5xl flex-col px-4 py-4 sm:px-6 md:px-8">
       <div className="grid min-h-0 flex-1 gap-4 md:grid-cols-[240px_1fr]">
-        {/* context */}
         <aside className="flex flex-col rounded-[12px] border border-border bg-card p-4 md:overflow-y-auto">
           <div className="mb-4 flex items-center gap-2">
             <DustAvatar size={28} />
             <div>
               <h2 className="font-display text-base text-ink">Your trail</h2>
-              <p className="font-mono text-[10px] uppercase tracking-wider text-label">
+              <p className="font-mono text-[10px] uppercase tracking-wider text-muted">
                 What Dust knows
               </p>
             </div>
@@ -222,7 +291,7 @@ export default function DustPage() {
               .
             </p>
           )}
-          <p className="mb-2 font-mono text-[10px] uppercase tracking-wider text-label">
+          <p className="mb-2 font-mono text-[10px] uppercase tracking-wider text-muted">
             Quick actions
           </p>
           <div className="flex flex-col gap-1.5">
@@ -232,124 +301,148 @@ export default function DustPage() {
                 type="button"
                 disabled={busy}
                 onClick={() => sendText(a.prompt)}
-                className="rounded-[8px] px-3 py-2 text-left text-sm text-ink hover:bg-page disabled:opacity-50"
+                className="rounded-[8px] px-3 py-2 text-left text-sm text-ink outline-none hover:bg-page focus-visible:ring-2 focus-visible:ring-teal disabled:opacity-50"
               >
                 {a.label}
               </button>
             ))}
           </div>
-          <Link to="/profile" className="mt-auto pt-6 text-xs text-teal hover:text-teal-dark">
+          <Link
+            to="/profile"
+            className="mt-auto pt-6 text-xs text-teal outline-none hover:text-teal-dark focus-visible:underline"
+          >
             Open profile →
           </Link>
         </aside>
 
-        {/* conversation */}
-        <section className="flex min-h-0 flex-col overflow-hidden rounded-[12px] border border-border bg-dust-panel text-dust-bone">
-          <header className="flex items-center justify-between border-b border-dust-panel-border px-5 py-4">
+        <section className="flex min-h-0 flex-col overflow-hidden rounded-[12px] border border-border bg-card">
+          <header className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-5 py-4">
             <div>
-              <h1 className="font-display text-lg font-semibold text-dust-bone">Dust</h1>
-              <p className="font-mono text-[10.5px] tracking-[0.03em] text-dust-moss">
+              <h1 className="font-display text-lg font-semibold text-ink">Dust</h1>
+              <p className="font-mono text-[10.5px] tracking-[0.03em] text-muted">
                 TRACES ON YOUR TRAIL
               </p>
             </div>
+            <TrailSweepStatus />
           </header>
 
-          <div className="relative flex-1 overflow-y-auto px-5 py-5">
+          <div className="relative flex-1 overflow-y-auto px-5 py-5" role="log" aria-live="polite">
             <ul className="space-y-5">
-              {messages.map((msg, i) => (
-                <li
-                  key={msg.id}
-                  className="ease-rise flex gap-3"
-                  style={{ animationDelay: `${Math.min(i, 6) * 40}ms` }}
-                >
-                  <span
-                    className={`mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 ${
-                      msg.status === 'confirmed'
-                        ? 'border-dust-moss bg-dust-moss text-dust-bone'
-                        : msg.role === 'user'
-                          ? 'border-teal bg-teal'
-                          : 'border-trail-gold/50 bg-dust-panel-elevated'
-                    }`}
+              {messages.map((msg, i) => {
+                const kind = messageKind(msg)
+                const isUser = kind === 'user'
+                const isFallback = kind === 'fallback' || kind === 'error'
+                const isProposal = kind === 'proposal' && msg.status !== 'confirmed' && msg.status !== 'skipped'
+                const fields = isProposal ? proposalFields(msg.suggestions) : []
+
+                return (
+                  <li
+                    key={msg.id}
+                    className="ease-rise flex items-start gap-3"
+                    style={{ animationDelay: `${Math.min(i, 6) * 40}ms` }}
                   >
-                    {msg.status === 'confirmed' ? (
-                      <Check size={12} />
-                    ) : msg.role === 'dust' ? (
-                      <span className="h-1.5 w-1.5 rounded-full bg-trail-gold" />
-                    ) : null}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm leading-relaxed text-[#DAD8CE]">{msg.text}</p>
-                    {hasProposal(msg) && msg.status !== 'confirmed' && (
-                      <div className="mt-3 space-y-2 rounded-[10px] border border-dust-panel-border bg-dust-panel-elevated p-3">
-                        <p className="font-mono text-[10px] uppercase tracking-wider text-label">
-                          Propose — nothing saved until you confirm
-                        </p>
-                        {(msg.suggestions?.add_tags || []).length > 0 && (
-                          <p className="text-xs text-label">
-                            Tags: {msg.suggestions.add_tags.join(', ')}
+                    <span
+                      className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 ${
+                        kind === 'confirmed'
+                          ? 'border-dust-moss bg-dust-moss text-dust-bone'
+                          : isUser
+                            ? 'border-teal bg-teal'
+                            : isFallback
+                              ? 'border-border bg-page'
+                              : 'border-trail-gold/50 bg-page'
+                      }`}
+                      aria-hidden="true"
+                    >
+                      {kind === 'confirmed' ? (
+                        <Check size={12} />
+                      ) : !isUser ? (
+                        <span
+                          className={`h-1.5 w-1.5 rounded-full ${
+                            isFallback ? 'bg-muted' : 'bg-trail-gold'
+                          }`}
+                        />
+                      ) : null}
+                    </span>
+                    <div className="min-w-0 flex-1 pt-0.5">
+                      <p
+                        className={`text-sm leading-relaxed ${
+                          isFallback ? 'text-muted' : 'text-ink'
+                        }`}
+                      >
+                        {msg.text}
+                      </p>
+
+                      {isProposal && (
+                        <div className="mt-3 space-y-3 rounded-[10px] border border-border-strong bg-page p-4">
+                          <p className="font-mono text-[10px] uppercase tracking-wider text-muted">
+                            Proposed change — nothing saved until you confirm
                           </p>
-                        )}
-                        {(msg.suggestions?.enable_types || []).length > 0 && (
-                          <p className="text-xs text-label">
-                            Types:{' '}
-                            {msg.suggestions.enable_types.map((t) => typeMeta(t).short).join(', ')}
-                          </p>
-                        )}
-                        {msg.suggestions?.profile_patch?.location && (
-                          <p className="text-xs text-label">
-                            Location: {msg.suggestions.profile_patch.location}
-                          </p>
-                        )}
-                        {msg.suggestions?.profile_patch?.education_level && (
-                          <p className="text-xs text-label">
-                            Education: {msg.suggestions.profile_patch.education_level}
-                          </p>
-                        )}
-                        <div className="flex gap-4 pt-1">
-                          <button
-                            type="button"
-                            disabled={busy}
-                            onClick={() => applySuggestions(msg)}
-                            className="text-sm font-medium text-trail-gold hover:brightness-110 disabled:opacity-60"
-                          >
-                            Confirm
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setMessages((m) => [
-                                ...m,
-                                {
-                                  id: `adj-${Date.now()}`,
-                                  role: 'dust',
-                                  status: 'open',
-                                  text: 'Tell me what to adjust and I’ll propose again.',
-                                },
-                              ])
-                            }
-                            className="text-sm text-label hover:text-dust-bone"
-                          >
-                            Skip
-                          </button>
+                          <dl className="space-y-2">
+                            {fields.map((f) => (
+                              <div key={f.label} className="flex flex-wrap gap-x-2 gap-y-0.5 text-sm">
+                                <dt className="font-medium text-ink">{f.label}:</dt>
+                                <dd className="text-muted">{f.value}</dd>
+                              </div>
+                            ))}
+                          </dl>
+                          <div className="flex flex-wrap gap-3 pt-1">
+                            <button
+                              type="button"
+                              disabled={busy}
+                              onClick={() => applySuggestions(msg)}
+                              className="rounded-[8px] bg-trail-gold px-3 py-1.5 text-sm font-medium text-ink outline-none hover:brightness-105 focus-visible:ring-2 focus-visible:ring-teal disabled:opacity-60"
+                            >
+                              Confirm
+                            </button>
+                            <button
+                              type="button"
+                              disabled={busy}
+                              onClick={() => dismissProposal(msg)}
+                              className="rounded-[8px] border border-border px-3 py-1.5 text-sm text-muted outline-none hover:text-ink focus-visible:ring-2 focus-visible:ring-teal disabled:opacity-60"
+                            >
+                              Cancel
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    )}
-                  </div>
+                      )}
+                    </div>
+                  </li>
+                )
+              })}
+
+              {busy && (
+                <li className="flex items-start gap-3" aria-busy="true">
+                  <span
+                    className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 border-trail-gold/50 bg-page"
+                    aria-hidden="true"
+                  >
+                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-trail-gold" />
+                  </span>
+                  <p className="pt-0.5 font-mono text-xs uppercase tracking-wider text-muted">
+                    {workingLabel}
+                    <span className="dust-working-dots" aria-hidden="true">
+                      …
+                    </span>
+                  </p>
                 </li>
-              ))}
+              )}
             </ul>
             <div ref={bottomRef} />
           </div>
 
           <form
-            className="flex gap-2.5 border-t border-dust-panel-border p-4"
+            className="flex gap-2.5 border-t border-border p-4"
             onSubmit={(e) => {
               e.preventDefault()
               send()
             }}
           >
+            <label htmlFor="dust-chat-input" className="sr-only">
+              Message Dust
+            </label>
             <input
-              className="flex-1 rounded-[10px] border border-dust-panel-border bg-dust-panel-elevated px-3 py-2.5 text-[13.5px] text-dust-bone outline-none placeholder:text-label focus:border-trail-gold"
+              id="dust-chat-input"
+              className="flex-1 rounded-[10px] border border-border bg-page px-3 py-2.5 text-[13.5px] text-ink outline-none placeholder:text-muted focus:border-trail-gold focus-visible:ring-2 focus-visible:ring-teal"
               placeholder="Ask Dust anything…"
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -358,8 +451,8 @@ export default function DustPage() {
             <button
               type="submit"
               disabled={busy || !input.trim()}
-              className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-[10px] bg-trail-gold text-dust-panel hover:brightness-105 disabled:opacity-50"
-              aria-label="Send"
+              className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-[10px] bg-trail-gold text-ink outline-none hover:brightness-105 focus-visible:ring-2 focus-visible:ring-teal disabled:opacity-50"
+              aria-label="Send message"
             >
               <Send size={15} />
             </button>

@@ -23,6 +23,7 @@ import SoftAskDialog from '../components/SoftAskDialog'
 import DiscardDialog from '../components/DiscardDialog'
 import ProfileTrail from '../components/ProfileTrail'
 import { OPPORTUNITY_TYPES, WEDGE_TAG_HINTS } from '../lib/utils'
+import { placeNameFromCoords } from '../lib/location'
 
 const SECTIONS = [
   { id: 'contact', label: 'Contact' },
@@ -118,9 +119,10 @@ function ProfileOnboardingWizard({ profile, updateProfile, refreshMatches, navig
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const { latitude, longitude } = pos.coords
+        const place = placeNameFromCoords(latitude, longitude)
         markDirty((f) => ({
           ...f,
-          location: f.location || `${latitude.toFixed(2)}, ${longitude.toFixed(2)}`,
+          location: f.location || place,
         }))
       },
       (err) => {

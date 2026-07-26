@@ -33,9 +33,21 @@ sources:
     categories: [professional_dev, experiential]
 
   - id: opportunity_desk_scrape
-    enabled: false
+    enabled: true
     source_type: scrape
     adapter: opportunity_desk
+    categories: [research, academic]
+
+  - id: ats_boards_scrape
+    enabled: true
+    source_type: scrape
+    adapter: ats_boards
+    categories: [employment]
+
+  - id: university_pages_scrape
+    enabled: true
+    source_type: scrape
+    adapter: university_pages
     categories: [research, academic]
 
   - id: grant_pdf_parse

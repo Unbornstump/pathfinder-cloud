@@ -4,6 +4,7 @@ import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { CompassMark } from './CompassMark'
 import DustAvatar from './DustAvatar'
 import ThemeToggle from './ThemeToggle'
+import TrailSweepStatus from './TrailSweepStatus'
 import { useAuth } from '../context/AuthContext'
 
 const DISCOVER = [
@@ -23,10 +24,8 @@ function RailLink({ to, label, icon: Icon, badge }) {
       title={label}
       aria-label={label}
       className={({ isActive }) =>
-        `group flex w-full items-center justify-center gap-3 rounded-xl px-2 py-2.5 text-sm transition md:justify-start md:px-3 ${
-          isActive
-            ? 'bg-teal text-white'
-            : 'text-muted hover:bg-page hover:text-ink'
+        `group flex w-full items-center justify-center gap-3 rounded-xl px-2 py-2.5 text-sm outline-none transition focus-visible:ring-2 focus-visible:ring-teal md:justify-start md:px-3 ${
+          isActive ? 'bg-teal text-white' : 'text-muted hover:bg-page hover:text-ink'
         }`
       }
     >
@@ -42,11 +41,12 @@ function RailLink({ to, label, icon: Icon, badge }) {
 }
 
 /**
- * Destination menu — Discover / You / Dust.
- * No dotted trail: these are rooms, not steps.
+ * CSS grid shell: rail | main.
+ * Main fills remaining width and scrolls; pages center themselves with max-width.
+ * (Previous absolute right-anchored pane caused the empty middle / clipped header.)
  */
 export default function AppShell() {
-  const { profile, notifications, logout } = useAuth()
+  const { profile, notifications, logout, trailSweep } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
   const [confirmSignOut, setConfirmSignOut] = useState(false)
@@ -65,93 +65,87 @@ export default function AppShell() {
           : 'Your matches'
 
   return (
-    <div className="app-shell relative min-h-screen bg-page">
-      <div className="pointer-events-none absolute inset-0 z-20">
-        {/* Top arm */}
-        <div className="pointer-events-auto absolute left-[4.75rem] right-3 top-3 flex h-14 items-center justify-between rounded-full bg-shell pl-5 pr-3 md:left-[11.5rem]">
-          <h1 className="font-display truncate text-lg text-ink">{pageTitle}</h1>
-          <div className="flex shrink-0 items-center gap-2">
-            <ThemeToggle />
-            <div
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-teal text-sm font-medium text-white"
-              title={profile?.username}
-            >
-              {initial}
-            </div>
-            <button
-              type="button"
-              onClick={() => setConfirmSignOut(true)}
-              className="inline-flex items-center gap-1.5 rounded-full border border-border-strong px-3 py-1.5 text-sm text-ink hover:bg-page"
-            >
-              Sign out
-            </button>
-          </div>
-        </div>
-
-        {/* Left rail — grouped destinations */}
-        <div className="pointer-events-auto absolute bottom-3 left-3 top-3 flex w-14 flex-col rounded-[1.5rem] bg-shell px-1.5 py-3 md:w-40 md:px-2">
-          <div className="mb-4 flex justify-center pt-1">
-            <NavLink to="/matches" aria-label="Pathfinder home">
-              <CompassMark size={36} variant="shell" />
-            </NavLink>
-          </div>
-
-          <p className="mb-1 hidden px-3 font-mono text-[10px] uppercase tracking-widest text-label md:block">
-            Discover
-          </p>
-          <nav className="flex flex-col gap-0.5">
-            {DISCOVER.map((item) => (
-              <RailLink key={item.to} {...item} />
-            ))}
-          </nav>
-
-          <div className="mx-2 my-3 border-t border-dashed border-border-strong md:mx-3" />
-
-          <p className="mb-1 hidden px-3 font-mono text-[10px] uppercase tracking-widest text-label md:block">
-            You
-          </p>
-          <nav className="flex flex-col gap-0.5">
-            {YOU.map((item) => (
-              <RailLink
-                key={item.to}
-                {...item}
-                badge={item.to === '/notifications' && unread > 0}
-              />
-            ))}
-          </nav>
-
-          <div className="mx-2 my-3 border-t border-dashed border-border-strong md:mx-3" />
-
-          <NavLink
-            to="/dust"
-            data-dust-trigger
-            title="Dust"
-            aria-label="Dust"
-            className={({ isActive }) =>
-              `dust-always-on mt-auto flex w-full items-center justify-center gap-3 rounded-xl px-2 py-2.5 text-sm transition md:justify-start md:px-3 ${
-                isActive
-                  ? 'bg-dust-panel text-dust-bone'
-                  : 'text-ink hover:bg-page'
-              }`
-            }
-          >
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-dust-panel shadow-[0_0_0_4px_rgba(217,167,86,0.18)]">
-              <DustAvatar size={16} />
-            </span>
-            <span className="hidden font-medium md:inline">Dust</span>
+    <div className="app-shell grid min-h-screen grid-cols-[3.5rem_1fr] grid-rows-[3.5rem_1fr] gap-3 bg-page p-3 md:grid-cols-[10rem_1fr]">
+      {/* Rail */}
+      <aside className="row-span-2 flex flex-col rounded-[1.5rem] bg-shell px-1.5 py-3 md:px-2">
+        <div className="mb-4 flex justify-center pt-1">
+          <NavLink to="/matches" aria-label="Pathfinder home">
+            <CompassMark size={36} variant="shell" />
           </NavLink>
         </div>
-      </div>
 
-      <div
-        className="absolute bottom-0 right-0 top-0 overflow-y-auto"
-        style={{ paddingTop: '4.25rem' }}
-        // left offset: narrow rail on mobile, labeled rail on md+
-      >
-        <div className="pl-[4.75rem] md:pl-[11.5rem]">
-          <Outlet />
+        <p className="mb-1 hidden px-3 font-mono text-[10px] uppercase tracking-widest text-label md:block">
+          Discover
+        </p>
+        <nav className="flex flex-col gap-0.5">
+          {DISCOVER.map((item) => (
+            <RailLink key={item.to} {...item} />
+          ))}
+        </nav>
+
+        <div className="mx-2 my-3 border-t border-dashed border-border-strong md:mx-3" />
+
+        <p className="mb-1 hidden px-3 font-mono text-[10px] uppercase tracking-widest text-label md:block">
+          You
+        </p>
+        <nav className="flex flex-col gap-0.5">
+          {YOU.map((item) => (
+            <RailLink
+              key={item.to}
+              {...item}
+              badge={item.to === '/notifications' && unread > 0}
+            />
+          ))}
+        </nav>
+
+        <div className="mx-2 my-3 border-t border-dashed border-border-strong md:mx-3" />
+
+        <NavLink
+          to="/dust"
+          data-dust-trigger
+          title="Dust"
+          aria-label="Dust"
+          className={({ isActive }) =>
+            `dust-always-on mt-auto flex w-full items-center justify-center gap-3 rounded-xl px-2 py-2.5 text-sm outline-none transition focus-visible:ring-2 focus-visible:ring-teal md:justify-start md:px-3 ${
+              isActive ? 'bg-teal text-white' : 'text-ink hover:bg-page'
+            }`
+          }
+        >
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#1e2420] text-[#f6f4ec] shadow-[0_0_0_4px_rgba(217,167,86,0.18)]">
+            <DustAvatar size={16} />
+          </span>
+          <span className="hidden font-medium md:inline">Dust</span>
+        </NavLink>
+      </aside>
+
+      {/* Top bar — sits in the main column only */}
+      <header className="flex h-14 min-w-0 items-center justify-between gap-3 rounded-full bg-shell pl-5 pr-3">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <h1 className="font-display min-w-0 truncate text-lg text-ink">{pageTitle}</h1>
+          {trailSweep ? <TrailSweepStatus className="hidden sm:inline-flex" /> : null}
         </div>
-      </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <ThemeToggle />
+          <div
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-teal text-sm font-medium text-white"
+            title={profile?.username}
+          >
+            {initial}
+          </div>
+          <button
+            type="button"
+            onClick={() => setConfirmSignOut(true)}
+            className="inline-flex items-center gap-1.5 rounded-full border border-border-strong px-3 py-1.5 text-sm text-ink hover:bg-page"
+          >
+            Sign out
+          </button>
+        </div>
+      </header>
+
+      {/* Main — fills remaining space; pages center with max-w */}
+      <main className="min-h-0 min-w-0 overflow-y-auto overflow-x-hidden rounded-[1.25rem] bg-page">
+        <Outlet />
+      </main>
 
       {confirmSignOut && (
         <div

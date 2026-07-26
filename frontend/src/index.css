@@ -66,7 +66,7 @@
   --pf-border-strong: #384038;
   --pf-ink: #f6f4ec;
   --pf-muted: #8b9b85;
-  --pf-label: #6b695e;
+  --pf-label: #9aa894;
   --pf-teal: #5b7cfa;
   --pf-teal-dark: #3654a6;
   --pf-teal-light: #243050;
@@ -109,8 +109,8 @@
   --pf-border: #d8d3c4;
   --pf-border-strong: #c9c4b6;
   --pf-ink: #1e2420;
-  --pf-muted: #6b695e;
-  --pf-label: #8b8878;
+  --pf-muted: #5c5a50;
+  --pf-label: #6b695e;
   --pf-teal: #3654a6;
   --pf-teal-dark: #2a4285;
   --pf-teal-light: #dde3f2;
@@ -118,10 +118,10 @@
   --pf-trail-gold: #d9a756;
   --pf-dust-clay: #b5624a;
   --pf-dust-moss: #6e8259;
-  --pf-dust-bone: #f6f4ec;
-  --pf-dust-panel: #1e2420;
-  --pf-dust-panel-elevated: #262d28;
-  --pf-dust-panel-border: #2c332d;
+  --pf-dust-bone: #1e2420;
+  --pf-dust-panel: #f6f4ec;
+  --pf-dust-panel-elevated: #edeae2;
+  --pf-dust-panel-border: #d8d3c4;
   --pf-urgent: #b5624a;
   --pf-urgent-bg: #f3e4dc;
   --pf-verified-bg: #e4eadc;
@@ -163,6 +163,41 @@ body {
   transition:
     background-color 0.25s ease,
     color 0.25s ease;
+}
+
+:focus {
+  outline: none;
+}
+
+:focus-visible {
+  outline: 2px solid var(--pf-teal);
+  outline-offset: 2px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@keyframes dust-working-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.dust-working-dots {
+  animation: dust-working-pulse 1.2s ease-in-out infinite;
 }
 
 .landing-v2 {

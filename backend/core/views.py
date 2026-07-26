@@ -11,7 +11,12 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from matching_engine.engine import promote_match_state, recompute_matches_for_profile
-from surface.feed import build_match_feed, serialize_move
+from surface.feed import (
+    build_match_feed,
+    build_trending_feed,
+    ingestion_status,
+    serialize_move,
+)
 from user_vector.signal_processor import record_signal
 
 from .auth_cookies import clear_refresh_cookie, set_refresh_cookie, tokens_for_user
@@ -285,6 +290,21 @@ class MatchedOpportunitiesView(APIView):
     def get(self, request):
         profile = get_profile(request.user)
         return Response(build_match_feed(profile))
+
+
+class TrendingOpportunitiesView(APIView):
+    """Ambient live listings not yet matched to this user."""
+
+    def get(self, request):
+        profile = get_profile(request.user)
+        return Response(build_trending_feed(profile))
+
+
+class IngestionStatusView(APIView):
+    """Freshness metadata for StatusStrip / scrape labels."""
+
+    def get(self, request):
+        return Response(ingestion_status())
 
 
 class MovesListView(APIView):

@@ -169,11 +169,75 @@ SEED = [
         "roi_inputs": {"effort_estimate": 0.45, "value_estimate": 0.55},
         "source_id": "seed:creative-residency-storytelling",
     },
+    {
+        "title": "Audit Associate — Nairobi",
+        "description": "Entry-level audit role supporting engagements across East Africa.",
+        "category": OpportunityCategory.EMPLOYMENT,
+        "organization": "KPMG East Africa",
+        "tags": ["job", "audit", "finance", "nairobi", "fully funded", "employment"],
+        "location": "Nairobi",
+        "requirements": "Recent graduate in accounting, finance, or related; CPA progress preferred.",
+        "why_summary": "A clear first step into professional services with structured training.",
+        "deadline": date.today() + timedelta(days=19),
+        "verified": True,
+        "eligibility_rules": {"citizenship": [], "location": ["Nairobi", "Kenya"], "budget_required": False},
+        "roi_inputs": {"effort_estimate": 0.3, "value_estimate": 0.75},
+        "source_id": "scrape:kpmg-audit-associate",
+        "source_type": OpportunitySourceType.SCRAPE,
+    },
+    {
+        "title": "Mastercard Foundation Research Grant",
+        "description": "Proposal-based research funding for scholars working on education and youth employment.",
+        "category": OpportunityCategory.RESEARCH,
+        "organization": "Mastercard Foundation",
+        "tags": ["grant", "research", "fellowship", "funding", "fully funded"],
+        "location": "East Africa",
+        "requirements": "Research proposal required; affiliation with a recognized institution.",
+        "why_summary": "Serious funding when you already have a research question worth defending.",
+        "deadline": date.today() + timedelta(days=38),
+        "verified": True,
+        "eligibility_rules": {"citizenship": [], "location": [], "budget_required": False},
+        "roi_inputs": {"effort_estimate": 0.75, "value_estimate": 0.9},
+        "source_id": "api:mastercard-research-grant",
+        "source_type": OpportunitySourceType.API,
+    },
+    {
+        "title": "Finance Attachment, Q4 intake",
+        "description": "Supervised finance attachment with sign-off ready before day one.",
+        "category": OpportunityCategory.EXPERIENTIAL,
+        "organization": "KCB Group",
+        "tags": ["attachment", "finance", "internship", "fieldwork"],
+        "location": "Nairobi",
+        "requirements": "Currently enrolled; supervisor sign-off required.",
+        "why_summary": "Fieldwork-heavy placement that counts toward graduation requirements.",
+        "deadline": date.today() + timedelta(days=45),
+        "verified": True,
+        "eligibility_rules": {"citizenship": [], "location": ["Nairobi", "Kenya"], "budget_required": False},
+        "roi_inputs": {"effort_estimate": 0.35, "value_estimate": 0.65},
+        "source_id": "scrape:kcb-finance-attachment-q4",
+        "source_type": OpportunitySourceType.SCRAPE,
+    },
+    {
+        "title": "DAAD Short Course — Data Science",
+        "description": "Fully funded short course in applied data science for East African graduates.",
+        "category": OpportunityCategory.ACADEMIC,
+        "organization": "DAAD",
+        "tags": ["scholarship", "course", "data science", "fully funded"],
+        "location": "Remote · Germany modules",
+        "requirements": "Bachelor's in a quantitative field; English proficiency.",
+        "why_summary": "Credentialed learning without a multi-year degree commitment.",
+        "deadline": date.today() + timedelta(days=35),
+        "verified": True,
+        "eligibility_rules": {"citizenship": [], "location": [], "budget_required": False},
+        "roi_inputs": {"effort_estimate": 0.4, "value_estimate": 0.7},
+        "source_id": "api:daad-data-science-short-course",
+        "source_type": OpportunitySourceType.API,
+    },
 ]
 
 
 class Command(BaseCommand):
-    help = "Seed demo opportunities (funding/fellowships wedge + one of each category)"
+    help = "Seed demo opportunities (multi-source provenance + category coverage)"
 
     def handle(self, *args, **options):
         obsolete = [
@@ -189,30 +253,26 @@ class Command(BaseCommand):
         for item in SEED:
             category = item["category"]
             verified = item.get("verified", False)
+            source_type = item.get("source_type", OpportunitySourceType.MANUAL)
+            payload = {k: v for k, v in item.items() if k != "source_type"}
             defaults = {
-                **item,
+                **payload,
                 "intent": CATEGORY_DEFAULT_INTENT.get(category, IntentBucket.ADVANCEMENT),
-                "source_type": OpportunitySourceType.MANUAL,
+                "source_type": source_type,
                 "status": OpportunityStatus.LIVE if verified else OpportunityStatus.UNVERIFIED,
                 "last_verified_at": now if verified else None,
             }
-            obj, was_created = Opportunity.objects.get_or_create(
-                title=item["title"],
+            obj, was_created = Opportunity.objects.update_or_create(
+                source_id=payload["source_id"],
                 defaults=defaults,
             )
             if was_created:
                 created += 1
             else:
-                for key, value in item.items():
-                    setattr(obj, key, value)
-                obj.intent = CATEGORY_DEFAULT_INTENT.get(category, IntentBucket.ADVANCEMENT)
-                obj.source_type = OpportunitySourceType.MANUAL
-                obj.status = OpportunityStatus.LIVE if verified else OpportunityStatus.UNVERIFIED
-                if verified:
-                    obj.last_verified_at = now
-                obj.save()
+                obj.updated_at = now
+                obj.save(update_fields=["updated_at"])
         self.stdout.write(
             self.style.SUCCESS(
-                f"Seeded opportunities ({created} new). Wedge emphasis: research & funding."
+                f"Seeded opportunities ({created} new / refreshed). Sources tagged for provenance."
             )
         )

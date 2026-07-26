@@ -8,6 +8,7 @@ from django.utils import timezone
 
 from core.models import Opportunity, OpportunitySourceType, OpportunityStatus
 from normalization.category_tagger import infer_category, infer_intent
+from normalization.classify import classify_raw_listing
 from normalization.dedup import find_duplicate, merge_into_canonical
 
 
@@ -29,29 +30,32 @@ def _parse_deadline(value):
 def upsert_raw(raw: dict) -> tuple[Opportunity, str]:
     """
     Insert or merge one raw opportunity dict.
+    Runs rules-based classification first, then dedup.
     Returns (opportunity, action) where action is created|merged|updated.
     """
+    classified = classify_raw_listing(raw)
     category = infer_category(
-        title=raw.get("title", ""),
-        tags=raw.get("tags") or [],
-        hint=raw.get("category", ""),
+        title=classified.get("title", ""),
+        tags=classified.get("tags") or [],
+        hint=classified.get("category", ""),
     )
-    deadline = _parse_deadline(raw.get("deadline"))
+    deadline = _parse_deadline(classified.get("deadline"))
     payload = {
-        "title": raw.get("title", "").strip(),
-        "description": raw.get("description") or "",
+        "title": classified.get("title", "").strip(),
+        "description": classified.get("description") or "",
         "category": category,
-        "intent": raw.get("intent") or infer_intent(category),
-        "organization": raw.get("organization") or "",
-        "tags": list(raw.get("tags") or []),
-        "location": raw.get("location") or "",
-        "requirements": raw.get("requirements") or "",
-        "why_summary": raw.get("why_summary") or "",
+        "intent": classified.get("intent") or infer_intent(category),
+        "organization": classified.get("organization") or "",
+        "tags": list(classified.get("tags") or []),
+        "location": classified.get("location") or "",
+        "requirements": classified.get("requirements") or "",
+        "why_summary": classified.get("why_summary") or "",
         "deadline": deadline,
-        "source_type": raw.get("source_type") or OpportunitySourceType.MANUAL,
-        "source_id": (raw.get("source_id") or "").strip(),
-        "eligibility_rules": raw.get("eligibility_rules") or {},
-        "roi_inputs": raw.get("roi_inputs") or {"effort_estimate": 0.5, "value_estimate": 0.5},
+        "source_type": classified.get("source_type") or OpportunitySourceType.MANUAL,
+        "source_id": (classified.get("source_id") or "").strip(),
+        "eligibility_rules": classified.get("eligibility_rules") or {},
+        "roi_inputs": classified.get("roi_inputs")
+        or {"effort_estimate": 0.5, "value_estimate": 0.5},
         "status": raw.get("status") or OpportunityStatus.UNVERIFIED,
     }
     if payload["status"] == OpportunityStatus.LIVE:

@@ -8,6 +8,8 @@ export function AuthProvider({ children }) {
   const [access, setAccess] = useState(null)
   const [profile, setProfile] = useState(null)
   const [matches, setMatches] = useState(null)
+  const [trending, setTrending] = useState([])
+  const [ingestionMeta, setIngestionMeta] = useState({ last_scraped_at: null, live_count: 0 })
   const [moves, setMoves] = useState([])
   const [notifications, setNotifications] = useState([])
   const [config, setConfig] = useState({ google_enabled: false, google_client_id: null })
@@ -18,16 +20,20 @@ export function AuthProvider({ children }) {
   }, [])
 
   const loadAuthedData = useCallback(async () => {
-    const [prof, matched, movesData, notes] = await Promise.all([
+    const [prof, matched, movesData, notes, trend, ingest] = await Promise.all([
       api('/profile/'),
       api('/matches/'),
       api('/moves/'),
       api('/notifications/'),
+      api('/opportunities/trending/').catch(() => []),
+      api('/ingestion/status/').catch(() => ({ last_scraped_at: null, live_count: 0 })),
     ])
     setProfile(prof)
     setMatches(matched)
     setMoves(movesData)
     setNotifications(notes)
+    setTrending(Array.isArray(trend) ? trend : [])
+    setIngestionMeta(ingest || { last_scraped_at: null, live_count: 0 })
     return { profile: prof, matches: matched, moves: movesData, notifications: notes }
   }, [])
 
@@ -53,6 +59,8 @@ export function AuthProvider({ children }) {
           applyAccess(null)
           setProfile(null)
           setMatches(null)
+          setTrending([])
+          setIngestionMeta({ last_scraped_at: null, live_count: 0 })
           setMoves([])
           setNotifications([])
         }
@@ -126,11 +134,47 @@ export function AuthProvider({ children }) {
   }, [])
 
   const refreshMatches = useCallback(async () => {
-    const [matched, movesData] = await Promise.all([api('/matches/'), api('/moves/')])
+    const [matched, movesData, trend, ingest] = await Promise.all([
+      api('/matches/'),
+      api('/moves/'),
+      api('/opportunities/trending/').catch(() => []),
+      api('/ingestion/status/').catch(() => ({ last_scraped_at: null, live_count: 0 })),
+    ])
     setMatches(matched)
     setMoves(movesData)
+    setTrending(Array.isArray(trend) ? trend : [])
+    setIngestionMeta(ingest || { last_scraped_at: null, live_count: 0 })
     return matched
   }, [])
+
+  const SWEEP_LINES = useMemo(
+    () => [
+      'Sweeping new matches…',
+      'Filtering against your trail…',
+      'Resettling your trail…',
+      'Dust is settling on new listings…',
+    ],
+    [],
+  )
+
+  const [trailSweep, setTrailSweep] = useState(null)
+
+  /** Save profile + rematch with a visible dust-themed working state (min ~1.8s). */
+  const saveProfileAndResweep = useCallback(
+    async (payload) => {
+      const line = SWEEP_LINES[Math.floor(Math.random() * SWEEP_LINES.length)]
+      setTrailSweep({ line, startedAt: Date.now() })
+      const minWait = new Promise((r) => setTimeout(r, 1800))
+      try {
+        const prof = await updateProfile(payload)
+        await Promise.all([refreshMatches(), minWait])
+        return prof
+      } finally {
+        setTrailSweep(null)
+      }
+    },
+    [SWEEP_LINES, updateProfile, refreshMatches],
+  )
 
   const refreshNotifications = useCallback(async () => {
     const notes = await api('/notifications/')
@@ -165,6 +209,8 @@ export function AuthProvider({ children }) {
       isAuthenticated: Boolean(access),
       profile,
       matches,
+      trending,
+      ingestionMeta,
       moves,
       notifications,
       config,
@@ -173,6 +219,8 @@ export function AuthProvider({ children }) {
       loginWithGoogle,
       logout,
       updateProfile,
+      saveProfileAndResweep,
+      trailSweep,
       refreshMatches,
       refreshNotifications,
       saveOpportunity,
@@ -184,6 +232,8 @@ export function AuthProvider({ children }) {
       access,
       profile,
       matches,
+      trending,
+      ingestionMeta,
       moves,
       notifications,
       config,
@@ -192,6 +242,8 @@ export function AuthProvider({ children }) {
       loginWithGoogle,
       logout,
       updateProfile,
+      saveProfileAndResweep,
+      trailSweep,
       refreshMatches,
       refreshNotifications,
       saveOpportunity,

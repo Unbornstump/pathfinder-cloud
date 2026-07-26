@@ -4,6 +4,9 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useDust } from '../context/DustContext'
 import { OPPORTUNITY_TYPES, typeMeta } from '../lib/utils'
+import { formatLocation } from '../lib/location'
+import ShellPage from './ShellPage'
+import TrailSweepStatus from './TrailSweepStatus'
 
 function signalScore(profile) {
   let n = 0
@@ -41,12 +44,13 @@ function SignalDots({ score }) {
  * Onboarding wizard stays in ProfileScreen for first-time sequence.
  */
 export default function ProfileTrail() {
-  const { profile, matches, updateProfile, refreshMatches } = useAuth()
+  const { profile, matches, saveProfileAndResweep, trailSweep } = useAuth()
   const { messages, askDust } = useDust()
   const [editing, setEditing] = useState(null)
   const [draft, setDraft] = useState({})
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [signalFlash, setSignalFlash] = useState(false)
 
   const score = signalScore(profile)
   const signal = signalLabel(score)
@@ -72,13 +76,19 @@ export default function ProfileTrail() {
   }
 
   async function saveRow(patch) {
+    const prevScore = signalScore(profile)
     setSaving(true)
     setError('')
     try {
-      await updateProfile(patch)
-      await refreshMatches()
+      await saveProfileAndResweep(patch)
       setEditing(null)
       setDraft({})
+      const next = signalScore({ ...profile, ...patch })
+      // recompute from merged view; profile state updates async — flash if we expect change
+      if (next !== prevScore || Object.keys(patch).length) {
+        setSignalFlash(true)
+        window.setTimeout(() => setSignalFlash(false), 2200)
+      }
     } catch (err) {
       setError(err.message || 'Could not save.')
     } finally {
@@ -106,7 +116,7 @@ export default function ProfileTrail() {
     {
       id: 'background',
       label: 'Location & background',
-      display: [profile?.location, profile?.education_level, profile?.qualifications]
+      display: [formatLocation(profile?.location), profile?.education_level, profile?.qualifications]
         .filter(Boolean)
         .join(' · ') || '— not set —',
       empty: !profile?.location && !profile?.education_level,
@@ -210,27 +220,35 @@ export default function ProfileTrail() {
   ]
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-8 md:px-8">
+    <ShellPage>
       <header className="mb-8 border-b border-border pb-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="font-display text-2xl text-ink">Your trail</h2>
-          <div className="flex items-center gap-2 text-sm text-muted">
+          <div
+            className={`flex shrink-0 items-center gap-2 text-sm text-muted transition ${
+              signalFlash ? 'scale-105 text-trail-gold' : ''
+            }`}
+          >
             <span className="font-mono text-[11px] uppercase tracking-wider">Signal</span>
             <SignalDots score={score} />
             <span className="text-trail-gold">{signal.word}</span>
           </div>
         </div>
-        <p className="mt-3 text-sm text-muted">
-          {score < 5
-            ? `Add your ${
-                !profile?.desired_types?.length
-                  ? 'desired opportunity types'
-                  : !profile?.interest_tags?.length
-                    ? 'interests'
-                    : 'missing details'
-              } to bring this from ${signal.word} to clear.`
-            : signal.hint}
-        </p>
+        {trailSweep ? (
+          <TrailSweepStatus className="mt-3" />
+        ) : (
+          <p className="mt-3 text-sm text-muted">
+            {score < 5
+              ? `Add your ${
+                  !profile?.desired_types?.length
+                    ? 'desired opportunity types'
+                    : !profile?.interest_tags?.length
+                      ? 'interests'
+                      : 'missing details'
+                } to bring this from ${signal.word} to clear.`
+              : signal.hint}
+          </p>
+        )}
       </header>
 
       {error && <p className="mb-4 text-sm text-urgent">{error}</p>}
@@ -255,9 +273,9 @@ export default function ProfileTrail() {
                 <div className="flex shrink-0 gap-2">
                   <button
                     type="button"
-                    disabled={saving}
+                    disabled={saving || Boolean(trailSweep)}
                     onClick={row.onSave}
-                    className="rounded-full bg-teal p-2 text-white disabled:opacity-50"
+                    className="rounded-full bg-teal p-2 text-white outline-none focus-visible:ring-2 focus-visible:ring-teal disabled:opacity-50"
                     aria-label="Save"
                   >
                     <Check size={14} />
@@ -265,7 +283,7 @@ export default function ProfileTrail() {
                   <button
                     type="button"
                     onClick={cancelEdit}
-                    className="rounded-full border border-border p-2 text-muted"
+                    className="rounded-full border border-border p-2 text-muted outline-none focus-visible:ring-2 focus-visible:ring-teal"
                     aria-label="Cancel"
                   >
                     <X size={14} />
@@ -275,7 +293,7 @@ export default function ProfileTrail() {
                 <button
                   type="button"
                   onClick={row.onStart}
-                  className="shrink-0 rounded-full border border-border p-2 text-muted hover:text-ink"
+                  className="shrink-0 rounded-full border border-border p-2 text-muted outline-none hover:text-ink focus-visible:ring-2 focus-visible:ring-teal"
                   aria-label={`Edit ${row.label}`}
                 >
                   <Pencil size={14} />
@@ -321,6 +339,6 @@ export default function ProfileTrail() {
           )}
         </ul>
       </section>
-    </div>
+    </ShellPage>
   )
 }

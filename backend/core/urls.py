@@ -8,6 +8,7 @@ from .views import (
     DismissOpportunityView,
     DustView,
     GoogleAuthView,
+    IngestionStatusView,
     InterestCountView,
     LogoutView,
     MarkNotificationReadView,
@@ -18,6 +19,7 @@ from .views import (
     ProfileView,
     RegisterView,
     SaveOpportunityView,
+    TrendingOpportunitiesView,
 )
 
 urlpatterns = [
@@ -37,6 +39,12 @@ urlpatterns = [
         name="opportunities_matched",
     ),
     path("matches/", MatchedOpportunitiesView.as_view(), name="matches"),
+    path(
+        "opportunities/trending/",
+        TrendingOpportunitiesView.as_view(),
+        name="opportunities_trending",
+    ),
+    path("ingestion/status/", IngestionStatusView.as_view(), name="ingestion_status"),
     path("moves/", MovesListView.as_view(), name="moves"),
     path(
         "opportunities/<int:pk>/save/",

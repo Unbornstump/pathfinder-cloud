@@ -12,15 +12,35 @@ from matching_engine.why_summary import generate_why_summary, normalize_tags, ov
 def tag_overlap_ok(opportunity, profile) -> bool:
     user_tags = normalize_tags(profile.interest_tags)
     opp_tags = normalize_tags(opportunity.tags)
-    if not user_tags or not opp_tags:
-        # Allow ambition-led discovery when tags incomplete but category preferred
-        ambition = (profile.ambition_vector or {}).get("inferred_categories") or []
-        if opportunity.category in ambition[:4]:
-            return True
+    desired = {
+        str(t).strip().lower()
+        for t in (profile.desired_types or [])
+        if str(t).strip()
+    }
+
+    if user_tags and opp_tags and (user_tags & opp_tags):
+        return True
+
+    # Category-led matching when the trail has types but few/no tags yet
+    if desired and opportunity.category.lower() in desired:
         if not user_tags:
-            return False
+            return True
+        # Soft: shared word stems between interests and listing tags
+        if opp_tags and any(
+            any(ut in ot or ot in ut for ot in opp_tags) for ut in user_tags
+        ):
+            return True
+        # Still allow category match with a mild ROI later — tags optional
+        return True
+
+    ambition = (profile.ambition_vector or {}).get("inferred_categories") or []
+    if opportunity.category in ambition[:4]:
+        return True
+
+    if not user_tags:
         return False
-    return bool(user_tags & opp_tags)
+    return False
+
 
 
 def recompute_matches_for_profile(profile) -> list[Match]:

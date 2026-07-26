@@ -78,6 +78,96 @@ def build_match_feed(profile) -> list[dict]:
     return [serialize_match(m, profile, interest_counts) for m in matches]
 
 
+def serialize_listing(opp, *, badge: str = "trending", interest_count: int = 0) -> dict:
+    """Public listing card shape for trending / ambient feeds."""
+    return {
+        "id": opp.id,
+        "title": opp.title,
+        "description": opp.description,
+        "category": opp.category,
+        "intent": opp.intent,
+        "tags": opp.tags or [],
+        "location": opp.location,
+        "organization": opp.organization,
+        "deadline": opp.deadline.isoformat() if opp.deadline else None,
+        "deadline_local": deadline_local_iso(opp),
+        "source_type": opp.source_type,
+        "verified": opp.verified or opp.status == "live",
+        "updated_at": opp.updated_at.isoformat() if opp.updated_at else None,
+        "interest_count": interest_count,
+        "badge": badge,
+        "meta": _listing_meta(opp),
+    }
+
+
+def _listing_meta(opp) -> str:
+    bits = []
+    if opp.deadline:
+        bits.append(f"Closes {opp.deadline.strftime('%b %d')}")
+    if opp.organization:
+        bits.append(opp.organization)
+    return " · ".join(bits)
+
+
+def build_trending_feed(profile, limit: int = 8) -> list[dict]:
+    """Live listings not already matched to this user — ambient 'Trending'."""
+    from django.db.models import Count
+
+    from core.models import Match, Opportunity, OpportunityStatus
+
+    matched_ids = set(
+        Match.objects.filter(profile=profile)
+        .exclude(state="dismissed")
+        .values_list("opportunity_id", flat=True)
+    )
+    qs = (
+        Opportunity.objects.filter(status__in=[OpportunityStatus.LIVE, OpportunityStatus.UNVERIFIED])
+        .exclude(id__in=matched_ids)
+        .order_by("-updated_at", "-created_at")[: limit * 3]
+    )
+    interest_counts = dict(
+        Match.objects.filter(opportunity__in=qs)
+        .exclude(profile=profile)
+        .values("opportunity")
+        .annotate(c=Count("id"))
+        .values_list("opportunity", "c")
+    )
+    desired = {str(t).lower() for t in (profile.desired_types or []) if t}
+    ranked = sorted(
+        qs,
+        key=lambda o: (
+            1 if o.category in desired else 0,
+            interest_counts.get(o.id, 0),
+            o.updated_at.timestamp() if o.updated_at else 0,
+        ),
+        reverse=True,
+    )[:limit]
+    return [
+        serialize_listing(
+            o,
+            badge="trending",
+            interest_count=interest_counts.get(o.id, 0),
+        )
+        for o in ranked
+    ]
+
+
+def ingestion_status() -> dict:
+    from core.models import Opportunity
+
+    latest = (
+        Opportunity.objects.exclude(status="expired")
+        .order_by("-updated_at")
+        .values_list("updated_at", flat=True)
+        .first()
+    )
+    count = Opportunity.objects.exclude(status="expired").count()
+    return {
+        "last_scraped_at": latest.isoformat() if latest else None,
+        "live_count": count,
+    }
+
+
 def serialize_move(move) -> dict:
     return {
         "id": move.id,

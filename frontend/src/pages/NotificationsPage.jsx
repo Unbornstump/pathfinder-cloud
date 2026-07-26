@@ -1,6 +1,9 @@
 import { Link } from 'react-router-dom'
 import { relativeTime, typeMeta } from '../lib/utils'
 import { useAuth } from '../context/AuthContext'
+import ShellPage from '../components/ShellPage'
+import StatTiles from '../components/StatTiles'
+import { TYPE_TO_AREA } from '../lib/sampleFeed'
 
 function buildDigest(profile, matches, moves) {
   const items = []
@@ -12,7 +15,10 @@ function buildDigest(profile, matches, moves) {
     ).length
 
   if (types.length) {
-    const labels = types.slice(0, 2).map((t) => typeMeta(t).short).join(' & ')
+    const labels = types
+      .slice(0, 2)
+      .map((t) => typeMeta(t).short)
+      .join(' & ')
     items.push({
       id: 'cat',
       title: `Watching ${labels}${types.length > 2 ? ` +${types.length - 2}` : ''}`,
@@ -64,7 +70,7 @@ function buildDigest(profile, matches, moves) {
   } else {
     items.push({
       id: 'week',
-      title: 'This week’s digest',
+      title: "This week's digest",
       body: 'No personal alerts yet — when a scrape lands something for you, it shows up here first.',
     })
   }
@@ -76,9 +82,21 @@ function buildDigest(profile, matches, moves) {
 export default function NotificationsPage() {
   const { profile, matches, moves, notifications, markNotificationRead } = useAuth()
   const digest = buildDigest(profile, matches, moves)
+  const unread = (notifications || []).filter((n) => !n.is_read).length
+  const categories = new Set(
+    (profile?.desired_types || []).map((t) => TYPE_TO_AREA[t]).filter(Boolean),
+  ).size
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-8 md:px-8">
+    <ShellPage>
+      <StatTiles
+        tiles={[
+          { label: 'Alerts this week', value: notifications?.length ?? 0 },
+          { label: 'Unread', value: unread },
+          { label: 'Categories tracked', value: categories },
+        ]}
+      />
+
       <section className="mb-10">
         <h2 className="font-display mb-4 text-xl text-ink">Your alerts</h2>
         {notifications.length === 0 ? (
@@ -120,18 +138,15 @@ export default function NotificationsPage() {
       </section>
 
       <section>
-        <div className="mb-4 flex items-center justify-between">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <h2 className="font-display text-xl text-ink">System digest</h2>
-          <span className="font-mono text-[10px] uppercase tracking-widest text-label">
+          <span className="shrink-0 font-mono text-[10px] uppercase tracking-widest text-label">
             · always on
           </span>
         </div>
         <ul className="space-y-3">
           {digest.map((item) => (
-            <li
-              key={item.id}
-              className="rounded-[12px] border border-border bg-card px-5 py-4"
-            >
+            <li key={item.id} className="rounded-[12px] border border-border bg-card px-5 py-4">
               <p className="text-sm text-ink">{item.title}</p>
               <p className="mt-1 text-sm text-muted">{item.body}</p>
               {item.link && (
@@ -146,7 +161,7 @@ export default function NotificationsPage() {
           ))}
         </ul>
       </section>
-    </div>
+    </ShellPage>
   )
 }
 

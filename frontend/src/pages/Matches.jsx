@@ -20,7 +20,12 @@ import SoftAskDialog from '../components/SoftAskDialog'
 import StatusStrip from '../components/StatusStrip'
 import TrendingFeed from '../components/TrendingFeed'
 import QuickAskBar from '../components/QuickAskBar'
+import ShellPage from '../components/ShellPage'
+import StatTiles from '../components/StatTiles'
+import OpportunityMap from '../components/OpportunityMap'
 import { daysUntil, typeMeta } from '../lib/utils'
+import { formatLocation, profileSignalScore, signalWord } from '../lib/location'
+import { TYPE_TO_AREA } from '../lib/sampleFeed'
 
 const TYPE_ICONS = {
   academic: GraduationCap,
@@ -55,12 +60,17 @@ function profileNudge(profile) {
   return null
 }
 
-/** Living Matches page — personal slot + ambient feed, never a blank room. */
+/** Living Matches page — stats, map middle column, personal slot, trending. */
 export default function Matches() {
-  const { profile, matches, saveOpportunity, dismissOpportunity } = useAuth()
+  const { profile, matches, trending, ingestionMeta, saveOpportunity, dismissOpportunity } =
+    useAuth()
   const [softAsk, setSoftAsk] = useState(null)
   const nudge = profileNudge(profile)
   const hasMatches = Boolean(matches?.length)
+  const categoriesWatched = new Set(
+    (profile?.desired_types || []).map((t) => TYPE_TO_AREA[t]).filter(Boolean),
+  ).size
+  const signal = signalWord(profileSignalScore(profile))
 
   async function allowCamera() {
     try {
@@ -73,20 +83,41 @@ export default function Matches() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8 md:px-8">
-      <StatusStrip profile={profile} scrapedLabel="last scraped recently" />
+    <ShellPage>
+      <StatusStrip profile={profile} lastScrapedAt={ingestionMeta?.last_scraped_at} />
+
+      <StatTiles
+        tiles={[
+          { label: 'Matches found', value: matches?.length ?? 0 },
+          { label: 'Categories watched', value: categoriesWatched || 0 },
+          { label: 'Signal strength', value: signal },
+        ]}
+      />
+
+      <OpportunityMap
+        profile={profile}
+        matches={matches || []}
+        categoryCount={categoriesWatched || 0}
+      />
 
       <section className="mb-2">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <h2 className="font-display text-xl text-ink">Your matches</h2>
-          <button
-            type="button"
-            onClick={() => setSoftAsk({ permission: 'camera', blocked: false })}
-            className="text-muted hover:text-ink"
-            aria-label="Add photo"
-          >
-            <Camera size={18} />
-          </button>
+          <div className="flex items-center gap-3">
+            {hasMatches ? (
+              <span className="font-mono text-[10px] uppercase tracking-widest text-muted">
+                · Live match
+              </span>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => setSoftAsk({ permission: 'camera', blocked: false })}
+              className="text-muted outline-none hover:text-ink focus-visible:ring-2 focus-visible:ring-teal"
+              aria-label="Add photo"
+            >
+              <Camera size={18} />
+            </button>
+          </div>
         </div>
 
         {!hasMatches ? (
@@ -109,7 +140,11 @@ export default function Matches() {
         )}
       </section>
 
-      <TrendingFeed title="Trending in your categories" />
+      <TrendingFeed
+        title="Trending in your categories"
+        items={trending}
+        live={false}
+      />
 
       {nudge && (
         <Link
@@ -135,7 +170,7 @@ export default function Matches() {
           onDismiss={() => setSoftAsk(null)}
         />
       )}
-    </div>
+    </ShellPage>
   )
 }
 
@@ -146,6 +181,7 @@ function OpportunityCard({ opportunity, onSave, onDismiss, index = 0 }) {
   const urgent = days !== null && days <= 5
   const saved = opportunity.match_state === 'saved' || opportunity.match_state === 'applied'
   const meta = typeMeta(category)
+  const place = formatLocation(opportunity.location)
 
   return (
     <article
@@ -176,8 +212,8 @@ function OpportunityCard({ opportunity, onSave, onDismiss, index = 0 }) {
 
       <h3 className="mb-1 text-base text-ink">{opportunity.title}</h3>
       <p className="mb-1 text-sm text-muted">
-        {opportunity.location}
-        {opportunity.location ? ' · ' : ''}
+        {place}
+        {place ? ' · ' : ''}
         {meta.short}
       </p>
 
@@ -212,7 +248,7 @@ function OpportunityCard({ opportunity, onSave, onDismiss, index = 0 }) {
             <button
               type="button"
               onClick={() => onDismiss(opportunity.id)}
-              className="text-muted hover:text-ink"
+              className="text-muted outline-none hover:text-ink focus-visible:ring-2 focus-visible:ring-teal"
               aria-label="Dismiss"
             >
               <X size={18} />
@@ -220,7 +256,9 @@ function OpportunityCard({ opportunity, onSave, onDismiss, index = 0 }) {
             <button
               type="button"
               onClick={() => onSave(opportunity.id)}
-              className={saved ? 'text-teal' : 'text-muted hover:text-teal'}
+              className={`outline-none focus-visible:ring-2 focus-visible:ring-teal ${
+                saved ? 'text-teal' : 'text-muted hover:text-teal'
+              }`}
               aria-label={saved ? 'Saved' : 'Save'}
             >
               <Bookmark size={18} fill={saved ? 'currentColor' : 'none'} />

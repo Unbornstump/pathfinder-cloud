@@ -3,7 +3,9 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import StatusStrip from '../components/StatusStrip'
 import QuickAskBar from '../components/QuickAskBar'
-import { EXAMPLE_MOVES } from '../lib/sampleFeed'
+import ShellPage from '../components/ShellPage'
+import StatTiles from '../components/StatTiles'
+import MovesTimeline from '../components/MovesTimeline'
 
 const MOVE_META = {
   intro_message: { label: 'Intro draft', icon: MessageSquare },
@@ -12,14 +14,26 @@ const MOVE_META = {
   networking_target: { label: 'Networking target', icon: Network },
 }
 
-/** Living Moves page — personal slot + illustrative relationship feed. */
+/** Living Moves page — stats + timeline middle column. */
 export default function Moves() {
   const { profile, moves } = useAuth()
   const hasMoves = Boolean(moves?.length)
+  const followUps = (moves || []).filter((m) => m.move_type === 'follow_up').length
+  const drafted = moves?.length ?? 0
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8 md:px-8">
+    <ShellPage>
       <StatusStrip profile={profile} scrapedLabel="relationship side · live" />
+
+      <StatTiles
+        tiles={[
+          { label: 'Moves drafted', value: drafted },
+          { label: 'Follow-ups pending', value: followUps },
+          { label: 'On your trail', value: hasMoves ? 'Active' : 'Quiet' },
+        ]}
+      />
+
+      <MovesTimeline moves={moves} />
 
       <section>
         <h2 className="font-display mb-4 text-xl text-ink">Your moves</h2>
@@ -59,38 +73,17 @@ export default function Moves() {
             })}
           </ul>
         )}
-      </section>
-
-      <section className="mt-10">
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <h2 className="font-display text-xl text-ink">How moves look</h2>
-          <span className="font-mono text-[10px] uppercase tracking-widest text-label">
-            · illustrative
-          </span>
-        </div>
-        <ul className="space-y-3">
-          {EXAMPLE_MOVES.map((ex) => (
-            <li
-              key={ex.id}
-              className="rounded-[12px] border border-dashed border-border-strong bg-card/60 px-5 py-4"
-            >
-              <p className="font-mono text-[11px] uppercase tracking-wider text-trail-gold">
-                {ex.label}
-              </p>
-              <p className="mt-1 text-sm text-ink">{ex.target}</p>
-              <p className="mt-1 text-sm text-muted">{ex.text}</p>
-            </li>
-          ))}
-        </ul>
-        <p className="mt-3 text-xs text-label">
-          Examples of the shape — yours appear here once matches trigger them.{' '}
-          <Link to="/matches" className="text-teal hover:text-teal-dark">
-            Browse matches
-          </Link>
-        </p>
+        {hasMoves && (
+          <p className="mt-3 text-xs text-label">
+            <Link to="/matches" className="text-teal hover:text-teal-dark">
+              Browse matches
+            </Link>{' '}
+            to feed more moves.
+          </p>
+        )}
       </section>
 
       <QuickAskBar placeholder='Ask Dust "who should I reach about fellowships?"…' />
-    </div>
+    </ShellPage>
   )
 }

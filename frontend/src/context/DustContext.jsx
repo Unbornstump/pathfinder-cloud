@@ -68,6 +68,7 @@ export function DustProvider({ children }) {
           id: 'intro',
           role: 'dust',
           status: 'open',
+          kind: 'guidance',
           text: introFor(profile),
         },
       ])
@@ -105,6 +106,7 @@ export function DustProvider({ children }) {
         id: `intro-${Date.now()}`,
         role: 'dust',
         status: 'open',
+        kind: 'guidance',
         text: introFor(profile),
       },
     ]
