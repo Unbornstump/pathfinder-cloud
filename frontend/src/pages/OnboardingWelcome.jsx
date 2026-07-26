@@ -21,7 +21,7 @@ export default function OnboardingWelcome() {
         <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-teal/15 text-teal">
           <Compass size={28} />
         </div>
-        <h1 className="mb-3 text-2xl text-ink">Alo alo</h1>
+        <h1 className="font-display mb-3 text-2xl text-ink">Alo alo</h1>
         <p className="mb-8 text-sm leading-relaxed text-muted">
           Welcome to Pathfinder. A few short steps will let us know what to watch for — or describe
           yourself to Dust in plain language and skip the form.
@@ -31,12 +31,12 @@ export default function OnboardingWelcome() {
           onClick={() => navigate('/onboarding/steps')}
           className="inline-flex w-full items-center justify-center gap-2 rounded-[12px] bg-teal px-4 py-2.5 text-white hover:bg-teal-dark"
         >
-          Let's start
+          Let&apos;s start
           <ArrowRight size={18} />
         </button>
         <button
           type="button"
-          onClick={openDust}
+          onClick={() => openDust()}
           className="mt-4 inline-flex w-full items-center justify-center gap-2 text-sm text-teal hover:text-teal-dark"
         >
           <DustAvatar size={18} />

@@ -1,26 +1,52 @@
 import { useState } from 'react'
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { Bell, Footprints, MapPin, User } from 'lucide-react'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { CompassMark } from './CompassMark'
 import DustAvatar from './DustAvatar'
 import ThemeToggle from './ThemeToggle'
 import { useAuth } from '../context/AuthContext'
-import { useDust } from '../context/DustContext'
 
-const NAV = [
+const DISCOVER = [
   { to: '/matches', label: 'Matches', icon: MapPin },
   { to: '/moves', label: 'Moves', icon: Footprints },
+]
+
+const YOU = [
   { to: '/notifications', label: 'Notifications', icon: Bell },
   { to: '/profile', label: 'Profile', icon: User },
 ]
 
+function RailLink({ to, label, icon: Icon, badge }) {
+  return (
+    <NavLink
+      to={to}
+      title={label}
+      aria-label={label}
+      className={({ isActive }) =>
+        `group flex w-full items-center justify-center gap-3 rounded-xl px-2 py-2.5 text-sm transition md:justify-start md:px-3 ${
+          isActive
+            ? 'bg-teal text-white'
+            : 'text-muted hover:bg-page hover:text-ink'
+        }`
+      }
+    >
+      <span className="relative flex h-8 w-8 shrink-0 items-center justify-center">
+        <Icon size={18} />
+        {badge ? (
+          <span className="absolute right-0 top-0 h-2 w-2 rounded-full bg-trail-gold ring-2 ring-shell" />
+        ) : null}
+      </span>
+      <span className="hidden font-medium md:inline">{label}</span>
+    </NavLink>
+  )
+}
+
 /**
- * Joined L-shell: top bar + left rail as one continuous surface.
- * Same background, no seam — compass sits at the join corner.
+ * Destination menu — Discover / You / Dust.
+ * No dotted trail: these are rooms, not steps.
  */
 export default function AppShell() {
   const { profile, notifications, logout } = useAuth()
-  const { open, openDust, closeDust } = useDust()
   const location = useLocation()
   const navigate = useNavigate()
   const [confirmSignOut, setConfirmSignOut] = useState(false)
@@ -31,18 +57,19 @@ export default function AppShell() {
   const pageTitle = location.pathname.startsWith('/notifications')
     ? 'Notifications'
     : location.pathname.startsWith('/profile')
-      ? 'Your profile'
+      ? 'Your trail'
       : location.pathname.startsWith('/moves')
         ? 'Your moves'
-        : 'Your matches'
+        : location.pathname.startsWith('/dust')
+          ? 'Dust'
+          : 'Your matches'
 
   return (
-    <div className="relative min-h-screen bg-page">
-      {/* Single continuous L: shared shell tone, no seam */}
+    <div className="app-shell relative min-h-screen bg-page">
       <div className="pointer-events-none absolute inset-0 z-20">
         {/* Top arm */}
-        <div className="pointer-events-auto absolute left-16 right-3 top-3 flex h-14 items-center justify-between rounded-full bg-shell pl-5 pr-3">
-          <h1 className="truncate text-lg text-ink">{pageTitle}</h1>
+        <div className="pointer-events-auto absolute left-[4.75rem] right-3 top-3 flex h-14 items-center justify-between rounded-full bg-shell pl-5 pr-3 md:left-[11.5rem]">
+          <h1 className="font-display truncate text-lg text-ink">{pageTitle}</h1>
           <div className="flex shrink-0 items-center gap-2">
             <ThemeToggle />
             <div
@@ -61,62 +88,69 @@ export default function AppShell() {
           </div>
         </div>
 
-        {/* Left rail */}
-        <div className="pointer-events-auto absolute left-3 top-3 flex h-[75%] w-16 flex-col items-center rounded-b-[2rem] bg-shell pb-4">
-          <div className="absolute left-1/2 top-2 z-30 -translate-x-1/2">
-            <NavLink to="/matches" aria-label="Home">
-              <CompassMark size={40} variant="shell" />
+        {/* Left rail — grouped destinations */}
+        <div className="pointer-events-auto absolute bottom-3 left-3 top-3 flex w-14 flex-col rounded-[1.5rem] bg-shell px-1.5 py-3 md:w-40 md:px-2">
+          <div className="mb-4 flex justify-center pt-1">
+            <NavLink to="/matches" aria-label="Pathfinder home">
+              <CompassMark size={36} variant="shell" />
             </NavLink>
           </div>
 
-          <div className="trail-line absolute bottom-6 left-1/2 top-16 -translate-x-1/2" />
-
-          <nav className="relative z-10 mt-16 flex flex-1 flex-col items-center justify-evenly py-2">
-            {NAV.map(({ to, label, icon: Icon }) => (
-              <NavLink
-                key={to}
-                to={to}
-                title={label}
-                aria-label={label}
-                className={({ isActive }) =>
-                  `waypoint-marker relative flex h-10 w-10 items-center justify-center rounded-full border-2 ${
-                    isActive
-                      ? 'border-teal bg-teal text-white'
-                      : 'border-border-strong bg-transparent text-muted hover:text-ink'
-                  }`
-                }
-              >
-                <Icon size={18} />
-                {to === '/notifications' && unread > 0 && (
-                  <span className="absolute right-0 top-0 h-2 w-2 rounded-full bg-teal" />
-                )}
-              </NavLink>
+          <p className="mb-1 hidden px-3 font-mono text-[10px] uppercase tracking-widest text-label md:block">
+            Discover
+          </p>
+          <nav className="flex flex-col gap-0.5">
+            {DISCOVER.map((item) => (
+              <RailLink key={item.to} {...item} />
             ))}
-
-            <button
-              type="button"
-              data-dust-trigger
-              title="Ask Dust"
-              aria-label="Ask Dust"
-              aria-pressed={open}
-              onClick={() => (open ? closeDust() : openDust())}
-              className={`waypoint-marker relative mt-1 flex h-10 w-10 items-center justify-center rounded-full transition-transform active:scale-95 ${
-                open
-                  ? 'border-0 bg-teal text-dust-bone shadow-[0_0_0_4px_rgba(217,167,86,0.22)]'
-                  : 'border-0 bg-dust-panel text-trail-gold shadow-[0_0_0_4px_rgba(217,167,86,0.18)]'
-              }`}
-            >
-              <DustAvatar size={18} />
-            </button>
           </nav>
+
+          <div className="mx-2 my-3 border-t border-dashed border-border-strong md:mx-3" />
+
+          <p className="mb-1 hidden px-3 font-mono text-[10px] uppercase tracking-widest text-label md:block">
+            You
+          </p>
+          <nav className="flex flex-col gap-0.5">
+            {YOU.map((item) => (
+              <RailLink
+                key={item.to}
+                {...item}
+                badge={item.to === '/notifications' && unread > 0}
+              />
+            ))}
+          </nav>
+
+          <div className="mx-2 my-3 border-t border-dashed border-border-strong md:mx-3" />
+
+          <NavLink
+            to="/dust"
+            data-dust-trigger
+            title="Dust"
+            aria-label="Dust"
+            className={({ isActive }) =>
+              `dust-always-on mt-auto flex w-full items-center justify-center gap-3 rounded-xl px-2 py-2.5 text-sm transition md:justify-start md:px-3 ${
+                isActive
+                  ? 'bg-dust-panel text-dust-bone'
+                  : 'text-ink hover:bg-page'
+              }`
+            }
+          >
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-dust-panel shadow-[0_0_0_4px_rgba(217,167,86,0.18)]">
+              <DustAvatar size={16} />
+            </span>
+            <span className="hidden font-medium md:inline">Dust</span>
+          </NavLink>
         </div>
       </div>
 
       <div
         className="absolute bottom-0 right-0 top-0 overflow-y-auto"
-        style={{ left: '4.5rem', paddingTop: '4.25rem' }}
+        style={{ paddingTop: '4.25rem' }}
+        // left offset: narrow rail on mobile, labeled rail on md+
       >
-        <Outlet />
+        <div className="pl-[4.75rem] md:pl-[11.5rem]">
+          <Outlet />
+        </div>
       </div>
 
       {confirmSignOut && (
@@ -130,9 +164,9 @@ export default function AppShell() {
             role="dialog"
             aria-modal="true"
           >
-            <h2 className="mb-2 text-lg text-ink">Sign out of Pathfinder?</h2>
+            <h2 className="font-display mb-2 text-lg text-ink">Sign out of Pathfinder?</h2>
             <p className="mb-6 text-sm text-muted">
-              You'll need to sign in again to see your matches.
+              You&apos;ll need to sign in again to see your matches.
             </p>
             <div className="flex items-center justify-end gap-6">
               <button

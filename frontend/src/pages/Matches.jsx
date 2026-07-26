@@ -16,8 +16,10 @@ import {
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { useDust } from '../context/DustContext'
 import SoftAskDialog from '../components/SoftAskDialog'
+import StatusStrip from '../components/StatusStrip'
+import TrendingFeed from '../components/TrendingFeed'
+import QuickAskBar from '../components/QuickAskBar'
 import { daysUntil, typeMeta } from '../lib/utils'
 
 const TYPE_ICONS = {
@@ -31,11 +33,34 @@ const TYPE_ICONS = {
   cultural_exchange: Palette,
 }
 
-/** Matches feed — content only; chrome comes from AppShell. */
+function profileNudge(profile) {
+  if (!profile?.desired_types?.length) {
+    return {
+      text: 'Add desired opportunity types to your profile',
+      to: '/profile',
+    }
+  }
+  if (!profile?.interest_tags?.length) {
+    return {
+      text: 'Add interest tags so the next scrape has more to work with',
+      to: '/profile',
+    }
+  }
+  if (!profile?.location) {
+    return {
+      text: 'Add your location to sharpen eligibility',
+      to: '/profile',
+    }
+  }
+  return null
+}
+
+/** Living Matches page — personal slot + ambient feed, never a blank room. */
 export default function Matches() {
-  const { matches, saveOpportunity, dismissOpportunity } = useAuth()
-  const { openDust } = useDust()
+  const { profile, matches, saveOpportunity, dismissOpportunity } = useAuth()
   const [softAsk, setSoftAsk] = useState(null)
+  const nudge = profileNudge(profile)
+  const hasMatches = Boolean(matches?.length)
 
   async function allowCamera() {
     try {
@@ -49,15 +74,11 @@ export default function Matches() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 md:px-8">
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-muted">
-          Listings with why they matter —{' '}
-          <Link to="/moves" className="text-teal hover:text-teal-dark">
-            Moves
-          </Link>{' '}
-          cover the relationship side.
-        </p>
-        <div className="flex items-center gap-3 text-sm">
+      <StatusStrip profile={profile} scrapedLabel="last scraped recently" />
+
+      <section className="mb-2">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="font-display text-xl text-ink">Your matches</h2>
           <button
             type="button"
             onClick={() => setSoftAsk({ permission: 'camera', blocked: false })}
@@ -66,43 +87,44 @@ export default function Matches() {
           >
             <Camera size={18} />
           </button>
-          <button type="button" onClick={openDust} className="text-teal hover:text-teal-dark">
-            Ask Dust
-          </button>
         </div>
-      </div>
 
-      {!matches?.length ? (
-        <div className="ease-rise rounded-[12px] border border-border bg-card p-10 text-center">
-          <p className="text-muted">
-            No matches yet. Ask Dust to propose tags, or edit your profile along the trail.
+        {!hasMatches ? (
+          <p className="ease-rise text-sm leading-relaxed text-muted">
+            Still gathering matches for you. Ask Dust to widen the search, or sharpen your profile
+            so the next scrape has more to work with.
           </p>
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-4">
-            <button
-              type="button"
-              onClick={openDust}
-              className="rounded-[12px] bg-teal px-5 py-2.5 text-white hover:bg-teal-dark"
-            >
-              Ask Dust
-            </button>
-            <Link to="/profile" className="text-sm text-muted hover:text-ink">
-              Edit profile
-            </Link>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2">
+            {matches.map((opportunity, index) => (
+              <OpportunityCard
+                key={opportunity.id}
+                opportunity={opportunity}
+                onSave={saveOpportunity}
+                onDismiss={dismissOpportunity}
+                index={index}
+              />
+            ))}
           </div>
-        </div>
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-2">
-          {matches.map((opportunity, index) => (
-            <OpportunityCard
-              key={opportunity.id}
-              opportunity={opportunity}
-              onSave={saveOpportunity}
-              onDismiss={dismissOpportunity}
-              index={index}
-            />
-          ))}
-        </div>
+        )}
+      </section>
+
+      <TrendingFeed title="Trending in your categories" />
+
+      {nudge && (
+        <Link
+          to={nudge.to}
+          className="mt-8 flex items-center justify-between gap-3 rounded-[12px] border border-border bg-card px-5 py-4 text-sm text-ink hover:border-border-strong"
+        >
+          <span>
+            <span className="text-muted">Sharpen this ▸ </span>
+            {nudge.text}
+          </span>
+          <span className="text-teal">→</span>
+        </Link>
       )}
+
+      <QuickAskBar placeholder='Ask Dust to search "attachment finance"…' />
 
       {softAsk && (
         <SoftAskDialog
@@ -152,7 +174,7 @@ function OpportunityCard({ opportunity, onSave, onDismiss, index = 0 }) {
         ) : null}
       </div>
 
-      <h2 className="mb-1 text-base text-ink">{opportunity.title}</h2>
+      <h3 className="mb-1 text-base text-ink">{opportunity.title}</h3>
       <p className="mb-1 text-sm text-muted">
         {opportunity.location}
         {opportunity.location ? ' · ' : ''}

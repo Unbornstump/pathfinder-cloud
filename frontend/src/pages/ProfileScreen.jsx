@@ -21,6 +21,7 @@ import {
 import { useAuth } from '../context/AuthContext'
 import SoftAskDialog from '../components/SoftAskDialog'
 import DiscardDialog from '../components/DiscardDialog'
+import ProfileTrail from '../components/ProfileTrail'
 import { OPPORTUNITY_TYPES, WEDGE_TAG_HINTS } from '../lib/utils'
 
 const SECTIONS = [
@@ -34,6 +35,17 @@ export default function ProfileScreen({ mode = 'onboarding' }) {
   const { profile, updateProfile, refreshMatches } = useAuth()
   const navigate = useNavigate()
   const isEdit = mode === 'edit' || Boolean(profile?.onboarding_complete)
+
+  /* Edit mode = trail summary; wizard reserved for first-time onboarding sequence */
+  if (isEdit) {
+    return <ProfileTrail />
+  }
+
+  return <ProfileOnboardingWizard profile={profile} updateProfile={updateProfile} refreshMatches={refreshMatches} navigate={navigate} />
+}
+
+function ProfileOnboardingWizard({ profile, updateProfile, refreshMatches, navigate }) {
+  const isEdit = false
   const [step, setStep] = useState(0)
   const [dirty, setDirty] = useState(false)
   const [saving, setSaving] = useState(false)

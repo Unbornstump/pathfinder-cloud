@@ -1,4 +1,4 @@
-import { Navigate, Outlet, createBrowserRouter, RouterProvider } from 'react-router-dom'
+import { Navigate, Outlet, createBrowserRouter, RouterProvider, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { DustProvider } from './context/DustContext'
 import { ThemeProvider } from './context/ThemeContext'
@@ -12,6 +12,7 @@ import ProfileScreen from './pages/ProfileScreen'
 import Matches from './pages/Matches'
 import Moves from './pages/Moves'
 import NotificationsPage from './pages/NotificationsPage'
+import DustPage from './pages/DustPage'
 import AppShell from './components/AppShell'
 
 function ProtectedRoute({ children }) {
@@ -31,9 +32,13 @@ function OnboardingGate() {
 
 function ShellGate() {
   const { profile, booting, isAuthenticated } = useAuth()
+  const location = useLocation()
   if (booting) return <Splash />
   if (!isAuthenticated) return <Navigate to="/" replace />
-  if (!profile?.onboarding_complete) return <Navigate to="/onboarding" replace />
+  // Dust is available during onboarding; other shell rooms require a complete trail
+  if (!profile?.onboarding_complete && !location.pathname.startsWith('/dust')) {
+    return <Navigate to="/onboarding" replace />
+  }
   return <AppShell />
 }
 
@@ -90,6 +95,7 @@ const router = createBrowserRouter([
           { path: 'moves', element: <Moves /> },
           { path: 'notifications', element: <NotificationsPage /> },
           { path: 'profile', element: <ProfileInShell /> },
+          { path: 'dust', element: <DustPage /> },
         ],
       },
       { path: 'profile/edit', element: <Navigate to="/profile" replace /> },

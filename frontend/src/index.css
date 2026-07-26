@@ -448,6 +448,37 @@ textarea {
   font-family: var(--font-mono);
 }
 
+.app-shell {
+  font-family: var(--font-sans);
+}
+
+.app-shell h1,
+.app-shell h2,
+.app-shell h3 {
+  font-family: var(--font-display);
+  font-weight: 500;
+}
+
+@keyframes dust-always-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 4px rgba(217, 167, 86, 0.14);
+  }
+  50% {
+    box-shadow: 0 0 0 7px rgba(217, 167, 86, 0.22);
+  }
+}
+
+.dust-always-on span:first-child {
+  animation: dust-always-glow 3.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dust-always-on span:first-child {
+    animation: none;
+  }
+}
+
 .waypoint-marker {
   transition:
     background-color 0.35s ease,
