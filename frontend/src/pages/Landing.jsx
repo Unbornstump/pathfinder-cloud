@@ -1,624 +1,967 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Search, Sparkles, Compass, ChevronRight } from 'lucide-react'
+import ThemeToggle from '../components/ThemeToggle'
+import DustAvatar from '../components/DustAvatar'
 
-/**
- * Alo alo landing v2 — four intent buckets, three-stage engine,
- * listings vs moves, ingestion strip. Live demo wired to register/login.
- */
+/* ---------------------------------- data ---------------------------------- */
 
-const BUCKETS = [
+const OPPORTUNITIES = [
   {
-    id: 'advancement',
+    cat: 'Jobs',
+    title: 'Audit Associate — Nairobi',
+    meta: 'Closes Aug 14 · KPMG East Africa',
+    tags: ['job', 'audit', 'finance', 'nairobi'],
+  },
+  {
+    cat: 'Internships',
+    title: 'Finance Attachment, Q4 intake',
+    meta: 'Requires supervisor sign-off · KCB Group',
+    tags: ['attachment', 'finance', 'internship'],
+  },
+  {
+    cat: 'Internships',
+    title: 'Software Engineering Internship',
+    meta: 'Remote · 3 months · Sendy',
+    tags: ['internship', 'remote', 'tech', 'software'],
+  },
+  {
+    cat: 'Research grants & fellowships',
+    title: 'Mastercard Foundation Research Grant',
+    meta: 'Closes Sep 2 · proposal required',
+    tags: ['research grant', 'funding', 'fellowship', 'grant'],
+  },
+  {
+    cat: 'Research grants & fellowships',
+    title: 'Wellcome Trust Early-Career Fellowship',
+    meta: 'Closes Oct 20 · health sciences',
+    tags: ['fellowship', 'research', 'health'],
+  },
+  {
+    cat: 'Accelerators & pitch funding',
+    title: 'Antler East Africa, Cohort 6',
+    meta: 'Applications open · Nairobi',
+    tags: ['accelerator', 'pitch', 'funding', 'startup'],
+  },
+  {
+    cat: 'Scholarships & short courses',
+    title: 'DAAD Short Course — Data Science',
+    meta: 'Closes Aug 30 · fully funded',
+    tags: ['scholarship', 'course', 'data science'],
+  },
+  {
+    cat: 'Residencies & cultural exchange',
+    title: 'Alliance Française Artist Residency',
+    meta: 'Nairobi · 6 weeks',
+    tags: ['residency', 'arts', 'exchange'],
+  },
+  {
+    cat: 'Conferences & mentorships',
+    title: 'DevFest Nairobi — Speaker Mentors',
+    meta: '3 fintech mentors matched',
+    tags: ['mentorship', 'conference', 'tech', 'fintech'],
+  },
+  {
+    cat: 'Civic & advocacy work',
+    title: 'County Budget Watch, Volunteer Analyst',
+    meta: 'Part-time · Nairobi',
+    tags: ['civic', 'advocacy', 'volunteer'],
+  },
+  {
+    cat: 'Jobs',
+    title: 'Remote Junior Data Analyst',
+    meta: 'Closes Aug 21 · Series A startup',
+    tags: ['job', 'remote', 'data', 'analyst'],
+  },
+  {
+    cat: 'Internships',
+    title: 'Legal Attachment — Corporate Desk',
+    meta: 'Requires supervisor sign-off · Nairobi',
+    tags: ['attachment', 'legal'],
+  },
+]
+
+const LIVE_FEED = [
+  { time: '2m ago', cat: 'JOB', title: 'Audit Associate, Nairobi · closes Aug 14' },
+  { time: '14m ago', cat: 'GRANT', title: 'Mastercard Foundation research grant · closes Sep 2' },
+  { time: '41m ago', cat: 'ATTACHMENT', title: 'KCB finance attachment, Q4 intake' },
+  { time: '1h ago', cat: 'MATCH', title: '3 DevFest speakers work in your field — intro drafted' },
+  { time: '3h ago', cat: 'COURSE', title: 'DAAD short course, data science · fully funded' },
+  { time: '5h ago', cat: 'MATCH', title: '2 alumni at Safaricom — cold email drafted' },
+  { time: '6h ago', cat: 'ACCELERATOR', title: 'Antler East Africa Cohort 6 · applications open' },
+  { time: '8h ago', cat: 'RESIDENCY', title: 'Alliance Française residency, 6 weeks' },
+]
+
+const AREAS = [
+  {
     name: 'Advancement',
-    blurb: 'Roles and placements you step into.',
-    categories: [
-      { name: 'Jobs', status: 'built' },
-      { name: 'Internships', status: 'built' },
-      { name: 'Attachments', status: 'built', tag: 'REQUIRES SIGN-OFF' },
-    ],
+    tag: '3 tagged',
+    desc: 'A role or placement you step straight into.',
+    items: ['Jobs', 'Internships', 'Attachments'],
+    note: 'Attachments require supervisor sign-off',
   },
   {
-    id: 'funding',
     name: 'Funding',
-    blurb: 'Money that comes with a proposal attached.',
-    categories: [
-      { name: 'Research grants & fellowships', status: 'opening', tag: 'OPENING NOW' },
-      { name: 'Accelerators & pitch funding', status: 'range' },
-    ],
+    tag: '2 tagged',
+    desc: 'Money that comes with a proposal attached — you apply, you don’t just show up.',
+    items: ['Research grants & fellowships', 'Accelerators & pitch funding'],
+    note: 'Research grants — opening now',
   },
   {
-    id: 'knowledge',
     name: 'Knowledge',
-    blurb: 'Structured learning, not just information.',
-    categories: [
-      { name: 'Scholarships & short courses', status: 'range' },
-      { name: 'Residencies & cultural exchange', status: 'range' },
-    ],
+    tag: '2 tagged',
+    desc: 'Structured learning with a certificate or credential at the end, not just a video.',
+    items: ['Scholarships & short courses', 'Residencies & cultural exchange'],
+    note: null,
   },
   {
-    id: 'networking',
     name: 'Networking',
-    blurb: 'Access to people, not just postings.',
-    categories: [
-      { name: 'Conferences & mentorships', status: 'range' },
-      { name: 'Civic & advocacy work', status: 'range' },
-    ],
+    tag: '2 tagged',
+    desc: 'A door to a person, not a posting — mentors, panels, rooms worth being in.',
+    items: ['Conferences & mentorships', 'Civic & advocacy work'],
+    note: null,
   },
 ]
 
 const STAGES = [
   {
-    tag: 'Stage one',
-    title: 'Eligibility',
-    angle: -35,
-    caption: 'filtering…',
-    copy: "Citizenship, location, budget, visa status. Binary — a listing either can be shown to you or it can't. Nothing here is a soft preference.",
+    n: '01',
+    label: 'Can you even apply?',
+    body: "Citizenship, location, budget, visa status. This is binary — a listing either can be shown to you or it can't. No point surfacing a fellowship you're not eligible for.",
   },
   {
-    tag: 'Stage two',
-    title: 'ROI score',
-    angle: 15,
-    caption: 'weighing…',
-    copy: 'Value against effort, scored differently per category — a fellowship trades months of application work for years of funding; a job trades a resume tweak for a monthly salary. One formula per bucket, not one formula for everything.',
+    n: '02',
+    label: 'Is it worth your time?',
+    body: 'Weighed differently per area — a fellowship trades weeks of proposal-writing for years of funding; a job trades a resume tweak for a monthly salary. Dust weighs the trade, not just the headline.',
   },
   {
-    tag: 'Stage three',
-    title: 'Why this matters',
-    angle: 0,
-    caption: 'settled.',
-    copy: 'Never a raw link. “Because you\'re in your third year of a BCom and said fieldwork, not a desk” — the reasoning is the product, not the listing.',
+    n: '03',
+    label: 'Why this one, for you',
+    body: 'Never a raw link. “Because you\'re in your third year of a BCom and said fieldwork, not a desk” — the reasoning is the product, the listing is just the payload.',
   },
 ]
 
-const INGESTION_SOURCES = [
-  { label: 'API', detail: 'Eventbrite, LinkedIn, GitHub, Crossref' },
-  { label: 'Scrape', detail: 'University, government, and ATS pages' },
-  { label: 'PDF parse', detail: 'Grant notices, NGO annual reports' },
-  { label: 'Social listening', detail: 'Reddit, X, Discord — before it\'s “official”' },
-]
-
-const DEMO_CARDS = [
-  {
-    keys: ['research', 'fellowship', 'grant', 'funding', 'phd', 'biotech'],
-    title: 'Biotech research fellowship',
-    subtitle: 'Nairobi · Research and innovation',
-  },
-  {
-    keys: ['job', 'remote', 'software', 'backend', 'engineer', 'career', 'hiring'],
-    title: 'Junior backend developer',
-    subtitle: 'Remote · Employment and career',
-  },
-  {
-    keys: ['internship', 'intern', 'attachment', 'experiential'],
-    title: 'Industrial attachment — finance',
-    subtitle: 'Nairobi · Experiential learning',
-  },
-  {
-    keys: ['mentorship', 'mentor', 'conference', 'networking'],
-    title: 'Product leaders summit (scholarship seats)',
-    subtitle: 'Lagos · Professional development',
-  },
-  {
-    keys: ['scholarship', 'study', 'academic', 'course'],
-    title: 'STEM PhD scholarship — diaspora track',
-    subtitle: 'Europe · Academic and educational',
-  },
-  {
-    keys: ['startup', 'accelerator', 'entrepreneur', 'pitch'],
-    title: 'Campus founders accelerator',
-    subtitle: 'Nairobi · Entrepreneurship',
-  },
-]
-
-const HINTS = ['research grant', 'remote job', 'mentorship', 'attachment']
-
-function matchDemo(query) {
-  const q = query.trim().toLowerCase()
-  if (!q) return null
-  for (const card of DEMO_CARDS) {
-    if (card.keys.some((k) => q.includes(k) || k.includes(q))) return card
-  }
-  const words = q.split(/\s+/).filter(Boolean)
-  for (const card of DEMO_CARDS) {
-    if (words.some((w) => card.keys.some((k) => k.includes(w) || w.includes(k)))) return card
-  }
-  return null
+const SECTION_LABELS = {
+  hero: 'start here',
+  live: 'fresh listings',
+  areas: 'four areas',
+  stages: 'how it decides',
+  dust: 'ask dust',
+  footer: 'end of the map',
 }
 
-function LandingCompassMark({ size = 68 }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 68 68" fill="none" aria-hidden="true">
-      <circle cx="34" cy="34" r="32" fill="#5b7cfa" stroke="#1c2550" strokeWidth="3" />
-      <path d="M34 16 L40 34 L34 52 L28 34 Z" fill="#0a0a0e" />
-      <circle cx="34" cy="34" r="2.4" fill="#5b7cfa" />
-    </svg>
-  )
-}
+const CHIPS = ['research grant', 'remote job', 'mentorship', 'attachment finance']
 
-function Needle({ angle }) {
-  return (
-    <svg width={140} height={140} viewBox="0 0 140 140" fill="none" aria-hidden="true">
-      <circle cx="70" cy="70" r="66" stroke="#26262f" strokeWidth="1.5" />
-      <circle cx="70" cy="70" r="3" fill="#5b7cfa" />
-      <g
-        style={{
-          transformOrigin: '70px 70px',
-          transform: `rotate(${angle}deg)`,
-          transition: 'transform 1.1s cubic-bezier(.2,.8,.2,1)',
-        }}
-      >
-        <path d="M70 20 L76 70 L70 120 L64 70 Z" fill="#5b7cfa" opacity="0.9" />
-      </g>
-    </svg>
-  )
-}
-
-function Stage({ data, active, registerRef }) {
-  return (
-    <div
-      ref={registerRef}
-      data-angle={data.angle}
-      data-caption={data.caption}
-      className={`border-b border-neutral-900 py-8 transition-opacity duration-500 last:border-b-0 ${
-        active ? 'opacity-100' : 'opacity-35'
-      }`}
-    >
-      <span className="mb-2 block font-mono text-xs uppercase tracking-wider text-[#5b7cfa]">
-        {data.tag}
-      </span>
-      <h3
-        className="mb-2 text-xl font-medium"
-        style={{ fontFamily: 'var(--landing-serif)' }}
-      >
-        {data.title}
-      </h3>
-      <p className="max-w-md text-sm text-neutral-400">{data.copy}</p>
-    </div>
-  )
-}
-
-function statusStyles(status) {
-  switch (status) {
-    case 'built':
-      return { textClass: 'text-neutral-200', dot: 'bg-[#5b7cfa]' }
-    case 'opening':
-      return { textClass: 'text-neutral-200', dot: 'bg-[#8ea2ff]' }
-    default:
-      return { textClass: 'text-neutral-500', dot: 'bg-neutral-700' }
-  }
-}
-
-function BucketCard({ bucket }) {
-  return (
-    <div className="rounded-2xl border border-neutral-800 bg-[#131318] p-6">
-      <div className="mb-1 flex items-baseline justify-between">
-        <h4 className="text-xl font-medium" style={{ fontFamily: 'var(--landing-serif)' }}>
-          {bucket.name}
-        </h4>
-        <span className="font-mono text-[11px] text-neutral-600">
-          {bucket.categories.length} tagged
-        </span>
-      </div>
-      <p className="mb-5 text-sm text-neutral-500">{bucket.blurb}</p>
-      <ul className="space-y-3">
-        {bucket.categories.map((c) => {
-          const s = statusStyles(c.status)
-          return (
-            <li key={c.name} className="flex items-center gap-2.5">
-              <span className={`h-1.5 w-1.5 rounded-full ${s.dot}`} />
-              <span className={`text-sm ${s.textClass}`}>{c.name}</span>
-              {c.tag && (
-                <span
-                  className="ml-auto rounded px-2 py-0.5 font-mono text-[10px] tracking-wide"
-                  style={{
-                    background: '#1c2550',
-                    color: '#b9c6ff',
-                    border: '1px solid #2c3970',
-                  }}
-                >
-                  {c.tag}
-                </span>
-              )}
-            </li>
-          )
-        })}
-      </ul>
-    </div>
-  )
-}
-
-const ctaPrimary =
-  'rounded-full bg-[#5b7cfa] px-7 py-3 text-sm font-semibold text-neutral-950 transition hover:brightness-110'
-const ctaSecondary =
-  'rounded-full border border-neutral-700 px-7 py-3 text-sm font-semibold transition hover:border-neutral-500'
+/* -------------------------------- component -------------------------------- */
 
 export default function Landing() {
   const [query, setQuery] = useState('')
-  const demo = useMemo(() => matchDemo(query), [query])
-  const [activeStage, setActiveStage] = useState(0)
-  const [needleAngle, setNeedleAngle] = useState(STAGES[0].angle)
-  const [needleCaption, setNeedleCaption] = useState(STAGES[0].caption)
-  const stageRefs = useRef([])
-  const waveBars = useRef([
-    6, 14, 22, 10, 26, 18, 8, 20, 12, 24, 16, 9, 22, 14, 6, 18, 10, 24, 8, 16,
-  ])
+  const [visibleAreas, setVisibleAreas] = useState(() => Array(AREAS.length).fill(false))
+  const [activeSection, setActiveSection] = useState('hero')
+  const [scrollProgress, setScrollProgress] = useState(0)
+  const [needleAngle, setNeedleAngle] = useState(135)
 
+  const canvasRef = useRef(null)
+  const heroRef = useRef(null)
+  const mouseRef = useRef({ x: -9999, y: -9999 })
+  const areaRefs = useRef([])
+  const sectionRefs = useRef({})
+  const lastScrollY = useRef(0)
+  const targetAngle = useRef(135)
+  const idleTimer = useRef(null)
+  const rafId = useRef(null)
+
+  const q = query.trim().toLowerCase()
+  const results = q
+    ? OPPORTUNITIES.filter(
+        (o) =>
+          o.title.toLowerCase().includes(q) ||
+          o.cat.toLowerCase().includes(q) ||
+          o.tags.some((t) => t.includes(q) || q.includes(t)),
+      ).slice(0, 5)
+    : []
+
+  /* ambient dust canvas in the hero */
   useEffect(() => {
-    const observer = new IntersectionObserver(
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    let raf
+    let w
+    let h
+
+    const styles = getComputedStyle(document.documentElement)
+    const gold = styles.getPropertyValue('--pf-trail-gold').trim() || '#d9a756'
+    const accent = styles.getPropertyValue('--land-accent').trim() || '#3654a6'
+    const clay = styles.getPropertyValue('--pf-dust-clay').trim() || '#b5624a'
+    const moss = styles.getPropertyValue('--pf-dust-moss').trim() || '#6e8259'
+    const colors = [gold, accent, clay, moss]
+
+    function resize() {
+      const rect = canvas.parentElement.getBoundingClientRect()
+      w = canvas.width = rect.width
+      h = canvas.height = rect.height
+    }
+    resize()
+    window.addEventListener('resize', resize)
+
+    const count = reduceMotion ? 0 : 80
+    const particles = Array.from({ length: count }, () => ({
+      x: Math.random() * w,
+      y: Math.random() * h,
+      vx: (Math.random() - 0.5) * 0.15,
+      vy: (Math.random() - 0.5) * 0.15,
+      r: Math.random() * 1.5 + 0.4,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      alpha: Math.random() * 0.5 + 0.25,
+    }))
+
+    function tick() {
+      ctx.clearRect(0, 0, w, h)
+      const m = mouseRef.current
+      particles.forEach((p) => {
+        const dx = m.x - p.x
+        const dy = m.y - p.y
+        const dist = Math.sqrt(dx * dx + dy * dy)
+        if (dist < 170) {
+          const force = ((170 - dist) / 170) * 0.035
+          p.vx += (dx / (dist || 1)) * force
+          p.vy += (dy / (dist || 1)) * force
+        }
+        p.vx *= 0.975
+        p.vy *= 0.975
+        p.x += p.vx
+        p.y += p.vy
+        if (p.x < 0) p.x = w
+        if (p.x > w) p.x = 0
+        if (p.y < 0) p.y = h
+        if (p.y > h) p.y = 0
+        ctx.beginPath()
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2)
+        ctx.fillStyle = p.color
+        ctx.globalAlpha = p.alpha
+        ctx.fill()
+      })
+      ctx.globalAlpha = 1
+      raf = requestAnimationFrame(tick)
+    }
+    tick()
+
+    const heroEl = heroRef.current
+    function onMove(e) {
+      const rect = canvas.getBoundingClientRect()
+      mouseRef.current = { x: e.clientX - rect.left, y: e.clientY - rect.top }
+    }
+    function onLeave() {
+      mouseRef.current = { x: -9999, y: -9999 }
+    }
+    heroEl?.addEventListener('mousemove', onMove)
+    heroEl?.addEventListener('mouseleave', onLeave)
+
+    return () => {
+      cancelAnimationFrame(raf)
+      window.removeEventListener('resize', resize)
+      heroEl?.removeEventListener('mousemove', onMove)
+      heroEl?.removeEventListener('mouseleave', onLeave)
+    }
+  }, [])
+
+  /* areas settle into view */
+  useEffect(() => {
+    const obs = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            const idx = stageRefs.current.indexOf(entry.target)
-            if (idx !== -1) {
-              setActiveStage(idx)
-              setNeedleAngle(STAGES[idx].angle)
-              setNeedleCaption(STAGES[idx].caption)
-            }
+            const idx = Number(entry.target.dataset.idx)
+            setVisibleAreas((prev) => {
+              if (prev[idx]) return prev
+              const next = [...prev]
+              next[idx] = true
+              return next
+            })
           }
         })
       },
-      { threshold: 0.55, rootMargin: '-10% 0px -30% 0px' },
+      { threshold: 0.3 },
     )
-    stageRefs.current.forEach((el) => el && observer.observe(el))
-    return () => observer.disconnect()
+    areaRefs.current.forEach((el) => el && obs.observe(el))
+    return () => obs.disconnect()
   }, [])
 
+  /* section spy + roaming compass needle */
+  useEffect(() => {
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const obs = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) setActiveSection(entry.target.dataset.section)
+        })
+      },
+      { threshold: 0.45 },
+    )
+    Object.values(sectionRefs.current).forEach((el) => el && obs.observe(el))
+
+    if (reduceMotion) return () => obs.disconnect()
+
+    function onScroll() {
+      const max = document.documentElement.scrollHeight - window.innerHeight
+      setScrollProgress(max > 0 ? Math.min(1, Math.max(0, window.scrollY / max)) : 0)
+      const delta = window.scrollY - lastScrollY.current
+      lastScrollY.current = window.scrollY
+      targetAngle.current += delta * 1.6
+      clearTimeout(idleTimer.current)
+      idleTimer.current = setTimeout(() => {
+        const resting = Math.round(targetAngle.current / 360) * 360 + 135
+        targetAngle.current = resting
+      }, 650)
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+
+    function tick() {
+      setNeedleAngle((a) => a + (targetAngle.current - a) * 0.08)
+      rafId.current = requestAnimationFrame(tick)
+    }
+    rafId.current = requestAnimationFrame(tick)
+
+    return () => {
+      obs.disconnect()
+      window.removeEventListener('scroll', onScroll)
+      cancelAnimationFrame(rafId.current)
+      clearTimeout(idleTimer.current)
+    }
+  }, [])
+
+  function scrollToDust() {
+    sectionRefs.current.dust?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
   return (
-    <div
-      className="landing-v2 min-h-screen text-neutral-100"
-      style={{
-        background: '#0a0a0e',
-        fontFamily: 'var(--landing-sans)',
-        '--landing-serif': "'Fraunces', Georgia, serif",
-        '--landing-sans': "'Inter', -apple-system, sans-serif",
-      }}
-    >
-      {/* HERO */}
-      <section className="px-8 pb-20 pt-24 text-center">
-        <div className="mb-9 flex justify-center">
-          <LandingCompassMark />
-        </div>
-        <h1
-          className="mx-auto mb-5 max-w-3xl text-4xl font-semibold tracking-tight md:text-5xl"
-          style={{ fontFamily: 'var(--landing-serif)' }}
+    <div className="landing-v2 f-body relative min-h-screen w-full">
+      {/* roaming compass — section guide; Dust lives behind sign-in */}
+      <button
+        type="button"
+        onClick={scrollToDust}
+        aria-label="Jump to Dust"
+        className="compass-mascot fixed left-5 z-40 hidden items-center gap-3 sm:flex"
+        style={{ top: `${14 + scrollProgress * 66}%` }}
+      >
+        <span
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full shadow-[0_4px_20px_rgba(0,0,0,0.25)]"
+          style={{ background: 'var(--land-card)', border: '1px solid var(--land-border)' }}
         >
-          Alo alo. We&apos;ll find what fits.
-        </h1>
-        <p className="mx-auto mb-9 max-w-xl text-lg text-neutral-400">
-          Advancement, funding, knowledge, and networking — matched to you instead of scattered
-          across a dozen single-purpose sites.
-        </p>
-        <div className="mb-14 flex flex-wrap justify-center gap-3">
-          <Link to="/register" className={ctaPrimary}>
-            Get started
-          </Link>
-          <Link to="/login" className={ctaSecondary}>
-            Sign in
-          </Link>
-        </div>
-        <div className="mx-auto max-w-xl rounded-3xl border border-neutral-800 bg-[#131318] px-8 py-10">
-          <p className="mb-4 text-sm text-neutral-400">Try it — type what you&apos;re looking for</p>
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="e.g. research grant, remote job, mentorship"
-            className="w-full rounded-xl border border-neutral-800 bg-[#0a0a0e] px-4 py-3 text-sm placeholder-neutral-600 focus:outline-none focus:ring-2 focus:ring-[#5b7cfa]"
-            aria-label="Demo search"
+          <Compass
+            size={20}
+            style={{
+              color: 'var(--land-accent)',
+              transform: `rotate(${needleAngle}deg)`,
+              transition: 'transform 60ms linear',
+            }}
           />
-          <div className="relative mt-5 min-h-20">
-            {!demo && (
-              <div className="text-xs text-neutral-600">
-                <b className="font-medium text-neutral-400">Try</b>{' '}
-                {HINTS.map((h, i) => (
-                  <button
-                    key={h}
-                    type="button"
-                    className="text-[#5b7cfa] hover:underline"
-                    onClick={() => setQuery(h)}
-                  >
-                    {h}
-                    {i < HINTS.length - 1 ? ', ' : ''}
-                  </button>
-                ))}
-              </div>
-            )}
-            {demo && (
-              <article className="ease-rise rounded-xl border border-neutral-800 bg-[#0a0a0e] p-4 text-left">
-                <div className="mb-3 flex justify-center">
-                  <span className="h-2.5 w-2.5 rounded-full bg-[#5b7cfa]" />
-                </div>
-                <h2 className="text-base text-neutral-100">{demo.title}</h2>
-                <p className="mt-1 text-sm text-neutral-400">{demo.subtitle}</p>
-                <p className="mt-4 text-xs text-neutral-600">
-                  Example match —{' '}
-                  <Link to="/register" className="text-[#5b7cfa] hover:underline">
-                    create an account
-                  </Link>{' '}
-                  to see opportunities that fit you.
-                </p>
-              </article>
-            )}
-          </div>
-        </div>
-      </section>
-
-      {/* INGESTION STRIP */}
-      <section className="border-t border-neutral-900 px-8 py-10">
-        <div className="mx-auto grid max-w-4xl grid-cols-2 gap-6 md:grid-cols-4">
-          {INGESTION_SOURCES.map((s) => (
-            <div key={s.label} className="text-center md:text-left">
-              <div className="mb-1 font-mono text-[11px] uppercase tracking-wide text-[#5b7cfa]">
-                {s.label}
-              </div>
-              <div className="text-xs text-neutral-500">{s.detail}</div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* MECHANISM */}
-      <section className="border-t border-neutral-900 px-8 py-24">
-        <div className="mx-auto mb-14 max-w-3xl text-center">
-          <span className="font-mono text-xs uppercase tracking-wider text-neutral-500">
-            How it points you
-          </span>
-          <h2
-            className="mt-2 text-3xl font-semibold"
-            style={{ fontFamily: 'var(--landing-serif)' }}
-          >
-            Eligibility, then ROI, then the reason why
-          </h2>
-          <p className="mt-3 text-neutral-400">
-            The three-stage engine underneath the compass, not a metaphor standing in for it.
-          </p>
-        </div>
-        <div className="mx-auto grid max-w-4xl grid-cols-1 items-start gap-10 md:grid-cols-[220px_1fr]">
-          <div className="sticky top-24 flex flex-row items-center justify-center gap-4 md:flex-col">
-            <Needle angle={needleAngle} />
-            <div className="min-h-4 text-center font-mono text-xs text-neutral-500">
-              {needleCaption}
-            </div>
-          </div>
-          <div>
-            {STAGES.map((s, i) => (
-              <Stage
-                key={s.tag}
-                data={s}
-                active={activeStage === i}
-                registerRef={(el) => {
-                  stageRefs.current[i] = el
-                }}
-              />
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* FOUR BUCKETS */}
-      <section className="border-t border-neutral-900 px-8 py-24">
-        <div className="mx-auto mb-14 max-w-3xl text-center">
-          <span className="font-mono text-xs uppercase tracking-wider text-neutral-500">
-            What it finds
-          </span>
-          <h2
-            className="mt-2 text-3xl font-semibold"
-            style={{ fontFamily: 'var(--landing-serif)' }}
-          >
-            Four buckets, eight categories tagged inside them
-          </h2>
-          <p className="mt-3 text-neutral-400">
-            Built wide against all eight. Live listings today sit in Advancement, with Funding
-            opening next.
-          </p>
-        </div>
-        <div className="mx-auto grid max-w-4xl grid-cols-1 gap-5 sm:grid-cols-2">
-          {BUCKETS.map((b) => (
-            <BucketCard key={b.id} bucket={b} />
-          ))}
-        </div>
-      </section>
-
-      {/* LISTINGS VS MOVES */}
-      <section className="border-t border-neutral-900 px-8 py-24">
-        <div className="mx-auto mb-14 max-w-3xl text-center">
-          <span className="font-mono text-xs uppercase tracking-wider text-neutral-500">
-            Two feeds, not one
-          </span>
-          <h2
-            className="mt-2 text-3xl font-semibold"
-            style={{ fontFamily: 'var(--landing-serif)' }}
-          >
-            Most of the good ones are never posted
-          </h2>
-          <p className="mt-3 text-neutral-400">
-            A large share of real opportunities get filled through a call, an intro, a follow-up —
-            not a listing. Alo alo surfaces both.
-          </p>
-        </div>
-        <div className="mx-auto grid max-w-4xl grid-cols-1 gap-5 md:grid-cols-2">
-          <div className="rounded-2xl border border-neutral-800 bg-[#131318] p-7">
-            <span className="font-mono text-[11px] uppercase tracking-wide text-neutral-500">
-              Listings
-            </span>
-            <h4
-              className="mt-2 mb-3 text-xl font-medium"
-              style={{ fontFamily: 'var(--landing-serif)' }}
-            >
-              Open and deadline-bound
-            </h4>
-            <p className="mb-4 text-sm text-neutral-400">
-              Jobs, attachments, grants, and programs that are publicly postable — scraped,
-              verified, and re-checked so nothing expired quietly shows up as live.
-            </p>
-            <div className="font-mono text-xs text-neutral-600">
-              e.g. &quot;Audit associate — Nairobi, closes Aug 14&quot;
-            </div>
-          </div>
-          <div className="rounded-2xl border border-neutral-800 bg-[#131318] p-7">
-            <span className="font-mono text-[11px] uppercase tracking-wide text-neutral-500">
-              Moves
-            </span>
-            <h4
-              className="mt-2 mb-3 text-xl font-medium"
-              style={{ fontFamily: 'var(--landing-serif)' }}
-            >
-              Relationship-shaped, no listing required
-            </h4>
-            <p className="mb-4 text-sm text-neutral-400">
-              A suggested next step from the way people actually land these — an intro message, a
-              follow-up prompt, a name worth cold-emailing.
-            </p>
-            <div className="font-mono text-xs text-neutral-600">
-              e.g. &quot;3 speakers at this conference work in your field — here&apos;s a two-line
-              intro&quot;
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* PROOF */}
-      <section className="border-t border-neutral-900 px-8 py-16">
-        <div className="mx-auto mb-10 max-w-3xl text-center">
-          <span className="font-mono text-xs uppercase tracking-wider text-neutral-500">
-            Alo alo, this is new
-          </span>
-          <h2
-            className="mt-2 text-3xl font-semibold"
-            style={{ fontFamily: 'var(--landing-serif)' }}
-          >
-            We&apos;re early. Here&apos;s one real call.
-          </h2>
-        </div>
-        <div className="mx-auto max-w-xl rounded-2xl border border-neutral-800 bg-[#131318] px-8 py-7">
-          <div className="mb-4 flex items-center gap-3">
-            <span className="h-2 w-2 rounded-full bg-[#5b7cfa]" />
-            <span className="font-mono text-xs text-neutral-500">
-              VOICE NOTE · 0:47 · 3RD YEAR, BCOM, MOI UNIVERSITY
-            </span>
-          </div>
-          <div className="mb-5 flex h-6 items-end gap-[3px]">
-            {waveBars.current.map((h, i) => (
-              <span
-                key={i}
-                className="w-[3px] rounded bg-[#5b7cfa]"
-                style={{ height: `${h}px`, opacity: 0.55 }}
-              />
-            ))}
-          </div>
-          <blockquote
-            className="text-lg leading-relaxed"
-            style={{ fontFamily: 'var(--landing-serif)' }}
-          >
-            &quot;I typed &apos;attachment, finance&apos; at midnight not expecting much. Got a call
-            two days later about a slot at a Nairobi audit firm that actually matched my course
-            dates. Supervisor sign-off was sorted before my first day.&quot;
-          </blockquote>
-          <div className="mt-5 text-sm text-neutral-400">
-            <b className="font-semibold text-neutral-100">Faith W.</b> — matched in 6 days,
-            attachment ongoing
-          </div>
-        </div>
-      </section>
-
-      {/* TRUST */}
-      <section className="border-t border-neutral-900 px-8 py-16">
-        <p className="mx-auto max-w-xl text-center text-sm text-neutral-600">
-          Built with local universities, regional employers, and a small number of exchange partners
-          — matches pulled from what they&apos;re actually posting, not a database we last touched
-          in June.
-        </p>
-      </section>
-
-      {/* CLOSING CTA */}
-      <section className="border-t border-neutral-900 px-8 py-24 text-center">
-        <span className="font-mono text-xs uppercase tracking-wider text-neutral-500">Alo alo</span>
-        <h2
-          className="mt-3 mb-3 text-4xl font-semibold"
-          style={{ fontFamily: 'var(--landing-serif)' }}
+        </span>
+        <span
+          className="compass-mascot-label f-mono rounded-full px-2.5 py-1 text-[10px] uppercase tracking-widest"
+          style={{
+            background: 'var(--land-card)',
+            border: '1px solid var(--land-border)',
+            color: 'var(--land-muted)',
+          }}
         >
-          We&apos;ll call you back.
-        </h2>
-        <p className="mb-8 text-neutral-400">Three questions, then we start pointing.</p>
-        <div className="flex flex-wrap justify-center gap-3">
-          <Link to="/register" className={ctaPrimary}>
-            Get started
-          </Link>
-          <Link to="/login" className={ctaSecondary}>
+          {SECTION_LABELS[activeSection] || 'exploring'}
+        </span>
+      </button>
+
+      {/* nav */}
+      <header
+        className="sticky top-0 z-40 flex items-center justify-between px-6 py-4 backdrop-blur-md"
+        style={{
+          borderBottom: '1px solid var(--land-border)',
+          background: 'color-mix(in srgb, var(--land-bg) 78%, transparent)',
+        }}
+      >
+        <Link to="/" className="flex items-center gap-2">
+          <Compass size={18} style={{ color: 'var(--land-accent)' }} />
+          <span className="f-display text-lg tracking-tight">Pathfinder</span>
+        </Link>
+        <nav
+          className="f-mono hidden items-center gap-6 text-xs uppercase tracking-widest md:flex"
+          style={{ color: 'var(--land-muted)' }}
+        >
+          <a href="#advancement" className="opacity-80 hover:opacity-100">
+            Advancement
+          </a>
+          <a href="#funding" className="opacity-80 hover:opacity-100">
+            Funding
+          </a>
+          <a href="#knowledge" className="opacity-80 hover:opacity-100">
+            Knowledge
+          </a>
+          <a href="#networking" className="opacity-80 hover:opacity-100">
+            Networking
+          </a>
+        </nav>
+        <div className="flex items-center gap-2 sm:gap-3">
+          <ThemeToggle
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border"
+            style={{ borderColor: 'var(--land-border)', color: 'var(--land-ink)' }}
+          />
+          <Link
+            to="/login"
+            className="rounded-full border px-3 py-2 text-sm sm:px-4"
+            style={{ borderColor: 'var(--land-border)', color: 'var(--land-ink)' }}
+          >
             Sign in
           </Link>
+          <Link
+            to="/register"
+            className="rounded-full px-3 py-2 text-sm font-medium sm:px-4"
+            style={{ background: 'var(--land-accent)', color: 'var(--land-cta-ink)' }}
+          >
+            Get started
+          </Link>
+        </div>
+      </header>
+
+      {/* hero */}
+      <section
+        ref={(el) => {
+          heroRef.current = el
+          sectionRefs.current.hero = el
+        }}
+        data-section="hero"
+        className="relative overflow-hidden px-6 pb-24 pt-20"
+      >
+        <canvas
+          ref={canvasRef}
+          className="pointer-events-none absolute inset-0"
+          style={{ width: '100%', height: '100%' }}
+        />
+
+        <div className="relative mx-auto max-w-3xl text-center">
+          <p
+            className="f-mono mb-5 text-xs uppercase tracking-[0.25em]"
+            style={{ color: 'var(--land-gold)' }}
+          >
+            Alo alo — Pathfinder, guided by Dust
+          </p>
+          <h1 className="f-display mb-6 text-4xl leading-[1.05] sm:text-6xl">
+            Tell Dust what you need.
+            <br />
+            It finds the way in.
+          </h1>
+          <p
+            className="mx-auto mb-10 max-w-xl text-base sm:text-lg"
+            style={{ color: 'var(--land-muted)' }}
+          >
+            Pathfinder matches you to jobs, grants, scholarships, and mentorships. Dust — the AI
+            inside — checks what you qualify for and explains why each match fits. Sign in to talk
+            to Dust.
+          </p>
+
+          <div className="relative mx-auto max-w-xl">
+            <div
+              className="flex items-center gap-3 rounded-full px-5 py-4"
+              style={{ background: 'var(--land-card)', border: '1px solid var(--land-border)' }}
+            >
+              <Search size={18} style={{ color: 'var(--land-muted)' }} />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="e.g. research grant, remote job, mentorship"
+                className="flex-1 bg-transparent text-sm outline-none placeholder:opacity-60 sm:text-base"
+                style={{ color: 'var(--land-ink)' }}
+                aria-label="Try a sample search"
+              />
+            </div>
+
+            <p
+              className="f-mono mt-3 text-[11px] uppercase tracking-widest"
+              style={{ color: 'var(--land-muted)' }}
+            >
+              Or skip the typing —{' '}
+              <Link to="/register" className="underline" style={{ color: 'var(--land-accent)' }}>
+                sign up and tell Dust your situation
+              </Link>
+            </p>
+
+            <div className="mt-4 flex flex-wrap justify-center gap-2">
+              {CHIPS.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setQuery(c)}
+                  className="f-mono rounded-full border px-3 py-1.5 text-xs opacity-80 hover:opacity-100"
+                  style={{ borderColor: 'var(--land-border)', color: 'var(--land-accent)' }}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+
+            {q && (
+              <div
+                className="mt-6 overflow-hidden rounded-2xl text-left"
+                style={{ border: '1px solid var(--land-border)' }}
+              >
+                {results.length > 0 ? (
+                  results.map((r, i) => (
+                    <Link
+                      key={r.title}
+                      to="/register"
+                      className="area-card flex items-start justify-between gap-4 px-5 py-4 transition hover:brightness-[1.03]"
+                      style={{
+                        borderBottom:
+                          i === results.length - 1 ? 'none' : '1px solid var(--land-border)',
+                        background: 'var(--land-card)',
+                        transitionDelay: `${i * 60}ms`,
+                      }}
+                    >
+                      <div>
+                        <p
+                          className="f-mono mb-1 text-[11px] uppercase tracking-widest"
+                          style={{ color: 'var(--land-gold)' }}
+                        >
+                          {r.cat}
+                        </p>
+                        <p className="text-sm sm:text-base">{r.title}</p>
+                        <p className="mt-1 text-xs" style={{ color: 'var(--land-muted)' }}>
+                          {r.meta}
+                        </p>
+                      </div>
+                      <ChevronRight
+                        size={16}
+                        style={{ color: 'var(--land-muted)' }}
+                        className="mt-1 shrink-0"
+                      />
+                    </Link>
+                  ))
+                ) : (
+                  <div
+                    className="px-5 py-6 text-sm"
+                    style={{ background: 'var(--land-card)', color: 'var(--land-muted)' }}
+                  >
+                    Nothing matches that yet — try &quot;grant&quot;, &quot;remote&quot;, or
+                    &quot;mentorship&quot;.
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </section>
 
-      {/* FOOTER */}
-      <footer className="border-t border-neutral-900 px-8 pb-10 pt-16">
-        <div className="mx-auto mb-12 grid max-w-4xl grid-cols-2 gap-8 md:grid-cols-4">
-          <div className="col-span-2 flex flex-col gap-3 md:col-span-1">
-            <LandingCompassMark size={30} />
-            <p className="max-w-[220px] text-sm text-neutral-600">
-              A compass for advancement, funding, knowledge, and networking. Alo alo.
+      {/* live feed */}
+      <section
+        ref={(el) => {
+          sectionRefs.current.live = el
+        }}
+        data-section="live"
+        className="px-6 py-14"
+        style={{
+          borderTop: '1px solid var(--land-border)',
+          borderBottom: '1px solid var(--land-border)',
+        }}
+      >
+        <div className="mx-auto mb-8 max-w-5xl text-center">
+          <p
+            className="f-mono mb-3 flex items-center justify-center gap-2 text-xs uppercase tracking-[0.25em]"
+            style={{ color: 'var(--land-live)' }}
+          >
+            <span
+              className="inline-block h-1.5 w-1.5 animate-pulse rounded-full"
+              style={{ background: 'var(--land-live)' }}
+            />
+            Live — sample trail
+          </p>
+          <h2 className="f-display text-2xl sm:text-3xl">What Dust is finding right now.</h2>
+        </div>
+
+        <div className="overflow-hidden">
+          <div className="marquee-track flex w-max gap-4">
+            {[...LIVE_FEED, ...LIVE_FEED].map((item, i) => (
+              <div
+                key={i}
+                className="flex items-center gap-3 whitespace-nowrap rounded-full px-5 py-3"
+                style={{ background: 'var(--land-card)', border: '1px solid var(--land-border)' }}
+              >
+                <span className="f-mono text-[11px]" style={{ color: 'var(--land-muted)' }}>
+                  {item.time}
+                </span>
+                <span
+                  className="f-mono rounded-full px-2 py-0.5 text-[11px] uppercase tracking-wider"
+                  style={{
+                    background: 'var(--land-badge-bg)',
+                    color: 'var(--land-badge-ink)',
+                  }}
+                >
+                  {item.cat}
+                </span>
+                <span className="text-sm">{item.title}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* four areas on a trail */}
+      <section
+        ref={(el) => {
+          sectionRefs.current.areas = el
+        }}
+        data-section="areas"
+        className="relative overflow-hidden px-6 py-24"
+      >
+        <div
+          className="dust-dot"
+          style={{ top: '10%', left: '8%', width: 4, height: 4, background: 'var(--land-gold)' }}
+        />
+        <div
+          className="dust-dot"
+          style={{
+            top: '60%',
+            left: '88%',
+            width: 3,
+            height: 3,
+            background: 'var(--land-accent)',
+            animationDelay: '2s',
+          }}
+        />
+        <div
+          className="dust-dot"
+          style={{
+            top: '35%',
+            left: '92%',
+            width: 5,
+            height: 5,
+            background: 'var(--land-gold)',
+            animationDelay: '4s',
+          }}
+        />
+        <div
+          className="dust-dot"
+          style={{
+            top: '80%',
+            left: '5%',
+            width: 3,
+            height: 3,
+            background: 'var(--land-accent)',
+            animationDelay: '1s',
+          }}
+        />
+
+        <div className="relative mx-auto mb-16 max-w-2xl text-center">
+          <p
+            className="f-mono mb-3 text-xs uppercase tracking-[0.25em]"
+            style={{ color: 'var(--land-gold)' }}
+          >
+            What Dust searches
+          </p>
+          <h2 className="f-display mb-4 text-3xl sm:text-4xl">
+            Every listing lives in one of four areas.
+          </h2>
+          <p style={{ color: 'var(--land-muted)' }}>
+            Tell Dust your course, year, and location, and it filters to the areas that fit — then
+            explains why a specific listing is worth your time. Live listings today sit in
+            Advancement, with Funding opening next.
+          </p>
+        </div>
+
+        <div className="relative mx-auto max-w-3xl">
+          <div
+            className="absolute bottom-0 left-1/2 top-0 hidden w-px -translate-x-1/2 sm:block"
+            style={{
+              background:
+                'repeating-linear-gradient(to bottom, var(--land-border) 0 6px, transparent 6px 14px)',
+            }}
+          />
+          <div className="flex flex-col gap-10">
+            {AREAS.map((area, i) => {
+              const alignRight = i % 2 === 1
+              const visible = visibleAreas[i]
+              return (
+                <div
+                  key={area.name}
+                  id={area.name.toLowerCase()}
+                  ref={(el) => {
+                    areaRefs.current[i] = el
+                  }}
+                  data-idx={i}
+                  className={`relative sm:w-[46%] ${alignRight ? 'sm:ml-auto' : ''}`}
+                >
+                  <span
+                    className="absolute top-6 hidden h-2.5 w-2.5 rotate-45 sm:block"
+                    style={{
+                      background: 'var(--land-accent)',
+                      left: alignRight ? '-1.6rem' : 'auto',
+                      right: alignRight ? 'auto' : '-1.6rem',
+                    }}
+                  />
+                  <div
+                    className="area-card rounded-2xl p-6"
+                    style={{
+                      background: 'var(--land-card)',
+                      border: '1px solid var(--land-border)',
+                      opacity: visible ? 1 : 0,
+                      transform: visible
+                        ? `translateY(0) rotate(${alignRight ? '0.6deg' : '-0.6deg'})`
+                        : 'translateY(24px) rotate(0deg)',
+                    }}
+                  >
+                    <div className="mb-2 flex items-center justify-between">
+                      <h3 className="f-display text-xl">{area.name}</h3>
+                      <span className="f-mono text-[11px]" style={{ color: 'var(--land-muted)' }}>
+                        {area.tag}
+                      </span>
+                    </div>
+                    <p className="mb-4 text-sm" style={{ color: 'var(--land-muted)' }}>
+                      {area.desc}
+                    </p>
+                    <ul className="mb-3 space-y-1.5">
+                      {area.items.map((it) => (
+                        <li key={it} className="flex items-center gap-2 text-sm">
+                          <span
+                            className="h-1 w-1 rounded-full"
+                            style={{ background: 'var(--land-accent)' }}
+                          />
+                          {it}
+                        </li>
+                      ))}
+                    </ul>
+                    {area.note && (
+                      <span
+                        className="f-mono inline-block rounded-full px-2 py-1 text-[11px]"
+                        style={{
+                          background: 'var(--land-badge-bg)',
+                          color: 'var(--land-badge-ink)',
+                        }}
+                      >
+                        {area.note}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* stages */}
+      <section
+        ref={(el) => {
+          sectionRefs.current.stages = el
+        }}
+        data-section="stages"
+        className="px-6 py-24"
+        style={{ borderTop: '1px solid var(--land-border)' }}
+      >
+        <div className="mx-auto mb-16 max-w-2xl text-center">
+          <p
+            className="f-mono mb-3 text-xs uppercase tracking-[0.25em]"
+            style={{ color: 'var(--land-gold)' }}
+          >
+            How Dust decides
+          </p>
+          <h2 className="f-display text-3xl sm:text-4xl">
+            Three questions, in this order, every time.
+          </h2>
+          <p className="mt-3">
+            <Link to="/how-it-works" className="text-sm underline" style={{ color: 'var(--land-accent)' }}>
+              Read the full matching walkthrough
+            </Link>
+          </p>
+        </div>
+        <div className="mx-auto flex max-w-2xl flex-col gap-10">
+          {STAGES.map((s) => (
+            <div key={s.n} className="flex gap-5">
+              <span className="f-mono mt-1 text-sm" style={{ color: 'var(--land-accent)' }}>
+                {s.n}
+              </span>
+              <div className="pl-5" style={{ borderLeft: '1px solid var(--land-border)' }}>
+                <h3 className="f-display mb-2 text-xl">{s.label}</h3>
+                <p className="text-sm" style={{ color: 'var(--land-muted)' }}>
+                  {s.body}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* dust preview */}
+      <section
+        ref={(el) => {
+          sectionRefs.current.dust = el
+        }}
+        data-section="dust"
+        className="px-6 py-24"
+        style={{ borderTop: '1px solid var(--land-border)' }}
+      >
+        <div className="mx-auto mb-10 max-w-2xl text-center">
+          <p
+            className="f-mono mb-3 text-xs uppercase tracking-[0.25em]"
+            style={{ color: 'var(--land-gold)' }}
+          >
+            Meet Dust
+          </p>
+          <h2 className="f-display mb-4 text-3xl sm:text-4xl">
+            Don&apos;t search. Just describe your situation.
+          </h2>
+          <p style={{ color: 'var(--land-muted)' }}>
+            Dust is Pathfinder&apos;s AI — available after you sign in. Tell it who you are and what
+            you need; it reasons across all four areas instead of making you pick one.
+          </p>
+        </div>
+
+        <div
+          className="mx-auto max-w-xl rounded-2xl p-6"
+          style={{ background: 'var(--land-card)', border: '1px solid var(--land-border)' }}
+        >
+          <div className="mb-4 flex items-center gap-2">
+            <DustAvatar size={22} />
+            <span
+              className="f-mono text-xs uppercase tracking-widest"
+              style={{ color: 'var(--land-muted)' }}
+            >
+              Dust · sample conversation
+            </span>
+          </div>
+          <p className="mb-3 text-sm">
+            <span style={{ color: 'var(--land-accent)' }}>You:</span> 3rd year BCom at Moi, want
+            fieldwork not a desk job, based in Nairobi.
+          </p>
+          <p className="text-sm" style={{ color: 'var(--land-muted)' }}>
+            <span style={{ color: 'var(--land-gold)' }}>Dust:</span> That points at the KCB finance
+            attachment, Q4 intake — fieldwork-heavy, and the supervisor sign-off is already sorted
+            before your first day. Want the deadline and how to apply?
+          </p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Link
+              to="/register"
+              className="inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium"
+              style={{ background: 'var(--land-accent)', color: 'var(--land-cta-ink)' }}
+            >
+              <Sparkles size={15} /> Sign up to use Dust
+            </Link>
+            <Link
+              to="/login"
+              className="inline-flex items-center rounded-full border px-5 py-2.5 text-sm"
+              style={{ borderColor: 'var(--land-border)', color: 'var(--land-ink)' }}
+            >
+              Sign in
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* footer */}
+      <footer
+        ref={(el) => {
+          sectionRefs.current.footer = el
+        }}
+        data-section="footer"
+        className="px-6 py-16"
+        style={{ borderTop: '1px solid var(--land-border)' }}
+      >
+        <div className="mx-auto grid max-w-5xl grid-cols-2 gap-10 sm:grid-cols-5">
+          <div className="col-span-2 sm:col-span-1">
+            <div className="mb-3 flex items-center gap-2">
+              <Compass size={16} style={{ color: 'var(--land-accent)' }} />
+              <span className="f-display text-base">Pathfinder</span>
+            </div>
+            <p className="text-xs" style={{ color: 'var(--land-muted)' }}>
+              Jobs, funding, courses, and rooms worth being in — found for you, and explained, by
+              Dust.
             </p>
           </div>
           <div>
-            <span className="mb-3 block font-mono text-[11px] tracking-wide text-[#5b7cfa]">
-              N — FIND
-            </span>
-            <ul className="space-y-2 text-sm text-neutral-400">
+            <p
+              className="f-mono mb-3 text-xs uppercase tracking-widest"
+              style={{ color: 'var(--land-accent)' }}
+            >
+              N — Find
+            </p>
+            <ul className="space-y-2 text-sm" style={{ color: 'var(--land-muted)' }}>
               <li>
-                <a href="#buckets" className="hover:text-neutral-100" onClick={(e) => e.preventDefault()}>
-                  Advancement
-                </a>
+                <a href="#advancement">Advancement</a>
               </li>
               <li>
-                <span className="hover:text-neutral-100">Funding</span>
+                <a href="#funding">Funding</a>
               </li>
               <li>
-                <span className="hover:text-neutral-100">Knowledge</span>
+                <a href="#knowledge">Knowledge</a>
               </li>
               <li>
-                <span className="hover:text-neutral-100">Networking</span>
-              </li>
-            </ul>
-          </div>
-          <div>
-            <span className="mb-3 block font-mono text-[11px] tracking-wide text-[#5b7cfa]">
-              E — ABOUT
-            </span>
-            <ul className="space-y-2 text-sm text-neutral-400">
-              <li>
-                <Link to="/how-it-works" className="hover:text-neutral-100">
-                  How matching works
-                </Link>
-              </li>
-              <li>
-                <Link to="/register" className="hover:text-neutral-100">
-                  Get started
-                </Link>
+                <a href="#networking">Networking</a>
               </li>
             </ul>
           </div>
           <div>
-            <span className="mb-3 block font-mono text-[11px] tracking-wide text-[#5b7cfa]">
-              S — PARTNERS
-            </span>
-            <ul className="space-y-2 text-sm text-neutral-400">
+            <p
+              className="f-mono mb-3 text-xs uppercase tracking-widest"
+              style={{ color: 'var(--land-accent)' }}
+            >
+              E — About
+            </p>
+            <ul className="space-y-2 text-sm" style={{ color: 'var(--land-muted)' }}>
               <li>
-                <span className="text-neutral-600">For employers</span>
+                <Link to="/how-it-works">How matching works</Link>
               </li>
               <li>
-                <span className="text-neutral-600">For universities</span>
+                <Link to="/register">Get started</Link>
+              </li>
+            </ul>
+          </div>
+          <div>
+            <p
+              className="f-mono mb-3 text-xs uppercase tracking-widest"
+              style={{ color: 'var(--land-accent)' }}
+            >
+              W — Dust
+            </p>
+            <ul className="space-y-2 text-sm" style={{ color: 'var(--land-muted)' }}>
+              <li>
+                <Link to="/login">Sign in to chat</Link>
               </li>
               <li>
-                <span className="text-neutral-600">Privacy</span>
+                <Link to="/how-it-works">How it decides</Link>
+              </li>
+            </ul>
+          </div>
+          <div>
+            <p
+              className="f-mono mb-3 text-xs uppercase tracking-widest"
+              style={{ color: 'var(--land-accent)' }}
+            >
+              S — Account
+            </p>
+            <ul className="space-y-2 text-sm" style={{ color: 'var(--land-muted)' }}>
+              <li>
+                <Link to="/login">Sign in</Link>
+              </li>
+              <li>
+                <Link to="/register">Create account</Link>
               </li>
             </ul>
           </div>
         </div>
-        <div className="mx-auto flex max-w-4xl flex-wrap justify-between gap-3 border-t border-neutral-900 pt-6 text-xs text-neutral-600">
-          <span>© 2026 Alo alo</span>
+        <div
+          className="mx-auto mt-12 flex max-w-5xl flex-wrap justify-between gap-3 border-t pt-6 text-xs"
+          style={{ borderColor: 'var(--land-border)', color: 'var(--land-faint)' }}
+        >
+          <span>© 2026 Pathfinder</span>
           <span>Nairobi</span>
         </div>
       </footer>
+
+      <Link
+        to="/register"
+        className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full px-5 py-3.5 shadow-lg"
+        style={{ background: 'var(--land-accent)', color: 'var(--land-cta-ink)' }}
+      >
+        <Sparkles size={17} />
+        <span className="text-sm font-medium">Get started</span>
+      </Link>
     </div>
   )
 }

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Lock, User } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { CompassMark } from '../components/CompassMark'
+import ThemeToggle from '../components/ThemeToggle'
 
 export default function Login() {
   const { login, loginWithGoogle, config, isAuthenticated, profile, booting } = useAuth()
@@ -74,7 +75,10 @@ export default function Login() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-page px-4 py-10">
+    <div className="relative flex min-h-screen items-center justify-center bg-page px-4 py-10">
+      <div className="absolute right-4 top-4 md:right-8 md:top-6">
+        <ThemeToggle />
+      </div>
       <div className="w-full max-w-md rounded-[12px] border border-border bg-card p-8">
         <div className="mb-4 flex justify-center">
           <CompassMark size={56} />

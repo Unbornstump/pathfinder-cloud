@@ -3,6 +3,7 @@ import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { Bell, Footprints, MapPin, User } from 'lucide-react'
 import { CompassMark } from './CompassMark'
 import DustAvatar from './DustAvatar'
+import ThemeToggle from './ThemeToggle'
 import { useAuth } from '../context/AuthContext'
 import { useDust } from '../context/DustContext'
 
@@ -19,7 +20,7 @@ const NAV = [
  */
 export default function AppShell() {
   const { profile, notifications, logout } = useAuth()
-  const { open, openDust } = useDust()
+  const { open, openDust, closeDust } = useDust()
   const location = useLocation()
   const navigate = useNavigate()
   const [confirmSignOut, setConfirmSignOut] = useState(false)
@@ -43,6 +44,7 @@ export default function AppShell() {
         <div className="pointer-events-auto absolute left-16 right-3 top-3 flex h-14 items-center justify-between rounded-full bg-shell pl-5 pr-3">
           <h1 className="truncate text-lg text-ink">{pageTitle}</h1>
           <div className="flex shrink-0 items-center gap-2">
+            <ThemeToggle />
             <div
               className="flex h-8 w-8 items-center justify-center rounded-full bg-teal text-sm font-medium text-white"
               title={profile?.username}
@@ -93,14 +95,18 @@ export default function AppShell() {
 
             <button
               type="button"
-              title="Dust"
+              data-dust-trigger
+              title="Ask Dust"
               aria-label="Ask Dust"
-              onClick={openDust}
-              className={`waypoint-marker relative mt-1 flex h-10 w-10 items-center justify-center rounded-full border-2 border-dashed ${
-                open ? 'border-trail-gold' : 'border-border-strong'
+              aria-pressed={open}
+              onClick={() => (open ? closeDust() : openDust())}
+              className={`waypoint-marker relative mt-1 flex h-10 w-10 items-center justify-center rounded-full transition-transform active:scale-95 ${
+                open
+                  ? 'border-0 bg-teal text-dust-bone shadow-[0_0_0_4px_rgba(217,167,86,0.22)]'
+                  : 'border-0 bg-dust-panel text-trail-gold shadow-[0_0_0_4px_rgba(217,167,86,0.18)]'
               }`}
             >
-              <DustAvatar size={22} />
+              <DustAvatar size={18} />
             </button>
           </nav>
         </div>

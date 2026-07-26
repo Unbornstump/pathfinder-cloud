@@ -1,37 +1,146 @@
 @import "tailwindcss";
 
+/*
+ * Semantic colors reference --pf-* tokens so light/dark can swap
+ * without rewriting every utility class.
+ */
+/*
+ * Token system (paper / ink / trail / dust)
+ *   paper  #E7E4DB  warm quarried stone — light page
+ *   ink    #1E2420  primary text / Dust panel surface
+ *   trail  #3654A6  brand blue — active, links
+ *   dust   #D9A756  amber mote / trail-blaze
+ *   clay   #B5624A  secondary dust
+ *   moss   #6E8259  tertiary / success
+ *   bone   #F6F4EC  text on dark surfaces
+ */
 @theme {
-  --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
-  /* Dark shell + landing (joined chrome mockups) */
-  --color-page: #0c0c0d;
-  --color-shell: #1a1a1c;
-  --color-card: #222226;
-  --color-border: #2e2e32;
-  --color-border-strong: #3a3a40;
-  --color-ink: #f4f4f5;
-  --color-muted: #a1a1aa;
-  --color-label: #71717a;
-  --color-teal: #3b82f6;
-  --color-teal-dark: #2563eb;
-  --color-teal-light: #1e3a5f;
-  --color-trail: #5c5c64;
-  --color-trail-gold: #ba7517;
-  --color-academic: #60a5fa;
-  --color-employment: #3b82f6;
-  --color-research: #818cf8;
-  --color-professional: #fbbf24;
-  --color-experiential: #4ade80;
-  --color-social: #fb7185;
-  --color-entrepreneur: #fb923c;
-  --color-cultural: #a78bfa;
-  --color-attachment: #4ade80;
-  --color-urgent: #f87171;
-  --color-urgent-bg: #3f1d1d;
-  --color-verified: #4ade80;
-  --color-verified-bg: #14532d;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Fraunces", Georgia, serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --color-page: var(--pf-page);
+  --color-shell: var(--pf-shell);
+  --color-card: var(--pf-card);
+  --color-border: var(--pf-border);
+  --color-border-strong: var(--pf-border-strong);
+  --color-ink: var(--pf-ink);
+  --color-muted: var(--pf-muted);
+  --color-label: var(--pf-label);
+  --color-teal: var(--pf-teal);
+  --color-teal-dark: var(--pf-teal-dark);
+  --color-teal-light: var(--pf-teal-light);
+  --color-trail: var(--pf-trail);
+  --color-trail-gold: var(--pf-trail-gold);
+  --color-dust-clay: var(--pf-dust-clay);
+  --color-dust-moss: var(--pf-dust-moss);
+  --color-dust-bone: var(--pf-dust-bone);
+  --color-dust-panel: var(--pf-dust-panel);
+  --color-dust-panel-elevated: var(--pf-dust-panel-elevated);
+  --color-dust-panel-border: var(--pf-dust-panel-border);
+  --color-academic: #5b7cfa;
+  --color-employment: #3654a6;
+  --color-research: #6e7fc7;
+  --color-professional: #d9a756;
+  --color-experiential: #6e8259;
+  --color-social: #b5624a;
+  --color-entrepreneur: #c48a3a;
+  --color-cultural: #6e7fc7;
+  --color-attachment: #6e8259;
+  --color-urgent: var(--pf-urgent);
+  --color-urgent-bg: var(--pf-urgent-bg);
+  --color-verified: #6e8259;
+  --color-verified-bg: var(--pf-verified-bg);
   --radius-card: 12px;
   --shell-rail: 4rem;
   --shell-top: 3.5rem;
+}
+
+/* Dark (default) — ink forest with trail blue + dust amber */
+:root,
+[data-theme="dark"] {
+  color-scheme: dark;
+  --pf-page: #151916;
+  --pf-shell: #1e2420;
+  --pf-card: #262d28;
+  --pf-border: #2c332d;
+  --pf-border-strong: #384038;
+  --pf-ink: #f6f4ec;
+  --pf-muted: #8b9b85;
+  --pf-label: #6b695e;
+  --pf-teal: #5b7cfa;
+  --pf-teal-dark: #3654a6;
+  --pf-teal-light: #243050;
+  --pf-trail: #4a5248;
+  --pf-trail-gold: #d9a756;
+  --pf-dust-clay: #b5624a;
+  --pf-dust-moss: #6e8259;
+  --pf-dust-bone: #f6f4ec;
+  --pf-dust-panel: #1e2420;
+  --pf-dust-panel-elevated: #262d28;
+  --pf-dust-panel-border: #2c332d;
+  --pf-urgent: #d4846a;
+  --pf-urgent-bg: #3a2824;
+  --pf-verified-bg: #2a3528;
+
+  /* Landing — aligned to paper/ink/trail */
+  --land-bg: #151916;
+  --land-card: #1e2420;
+  --land-border: #2c332d;
+  --land-ink: #f6f4ec;
+  --land-muted: #8b9b85;
+  --land-dim: #6b695e;
+  --land-faint: #4a5248;
+  --land-accent: #5b7cfa;
+  --land-accent-soft: #8ea2ff;
+  --land-badge-bg: #243050;
+  --land-badge-ink: #b9c6ff;
+  --land-badge-border: #3654a6;
+  --land-needle-ring: #2c332d;
+  --land-input-bg: #151916;
+  --land-cta-ink: #1e2420;
+}
+
+/* Light — warm paper stone */
+[data-theme="light"] {
+  color-scheme: light;
+  --pf-page: #e7e4db;
+  --pf-shell: #edeae2;
+  --pf-card: #f6f4ec;
+  --pf-border: #d8d3c4;
+  --pf-border-strong: #c9c4b6;
+  --pf-ink: #1e2420;
+  --pf-muted: #6b695e;
+  --pf-label: #8b8878;
+  --pf-teal: #3654a6;
+  --pf-teal-dark: #2a4285;
+  --pf-teal-light: #dde3f2;
+  --pf-trail: #c4beac;
+  --pf-trail-gold: #d9a756;
+  --pf-dust-clay: #b5624a;
+  --pf-dust-moss: #6e8259;
+  --pf-dust-bone: #f6f4ec;
+  --pf-dust-panel: #1e2420;
+  --pf-dust-panel-elevated: #262d28;
+  --pf-dust-panel-border: #2c332d;
+  --pf-urgent: #b5624a;
+  --pf-urgent-bg: #f3e4dc;
+  --pf-verified-bg: #e4eadc;
+
+  --land-bg: #e7e4db;
+  --land-card: #f6f4ec;
+  --land-border: #d8d3c4;
+  --land-ink: #1e2420;
+  --land-muted: #6b695e;
+  --land-dim: #8b8878;
+  --land-faint: #c4beac;
+  --land-accent: #3654a6;
+  --land-accent-soft: #5b7cfa;
+  --land-badge-bg: #dde3f2;
+  --land-badge-ink: #2a4285;
+  --land-badge-border: #b8c5e0;
+  --land-needle-ring: #c9c4b6;
+  --land-input-bg: #edeae2;
+  --land-cta-ink: #f6f4ec;
 }
 
 * {
@@ -47,24 +156,117 @@ body,
 body {
   margin: 0;
   font-family: var(--font-sans);
-  background: var(--color-page);
-  color: var(--color-ink);
+  background: var(--pf-page);
+  color: var(--pf-ink);
   font-weight: 400;
   -webkit-font-smoothing: antialiased;
+  transition:
+    background-color 0.25s ease,
+    color 0.25s ease;
 }
 
 .landing-v2 {
   --landing-serif: "Fraunces", Georgia, serif;
   --landing-sans: "Inter", -apple-system, sans-serif;
+  --landing-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --land-live: var(--pf-dust-moss);
+  --land-gold: var(--pf-trail-gold);
+  background: var(--land-bg);
+  color: var(--land-ink);
 }
 
+.landing-v2 .f-display {
+  font-family: var(--landing-serif);
+}
+
+.landing-v2 .f-body {
+  font-family: var(--landing-sans);
+}
+
+.landing-v2 .f-mono,
 .landing-v2 .font-mono {
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-family: var(--landing-mono);
 }
 
 .landing-v2 ::selection {
-  background: #5b7cfa;
-  color: #0a0a0e;
+  background: var(--land-accent);
+  color: var(--land-cta-ink);
+}
+
+.landing-v2 .marquee-track {
+  animation: land-marquee 32s linear infinite;
+}
+
+.landing-v2 .marquee-track:hover {
+  animation-play-state: paused;
+}
+
+@keyframes land-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.landing-v2 .dust-dot {
+  position: absolute;
+  border-radius: 9999px;
+  animation: land-dust-float 9s ease-in-out infinite;
+}
+
+@keyframes land-dust-float {
+  0%,
+  100% {
+    transform: translate(0, 0);
+    opacity: 0.25;
+  }
+  50% {
+    transform: translate(6px, -14px);
+    opacity: 0.6;
+  }
+}
+
+.landing-v2 .area-card {
+  transition:
+    opacity 700ms cubic-bezier(0.2, 0.7, 0.2, 1),
+    transform 700ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.landing-v2 .compass-mascot {
+  transition: top 220ms ease-out;
+}
+
+.landing-v2 .compass-mascot:hover .compass-mascot-label {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.landing-v2 .compass-mascot-label {
+  opacity: 0;
+  transform: translateX(-4px);
+  transition:
+    opacity 200ms ease,
+    transform 200ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-v2 .marquee-track,
+  .landing-v2 .dust-dot {
+    animation: none !important;
+  }
+
+  .landing-v2 .area-card,
+  .landing-v2 .compass-mascot {
+    transition: none !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .landing-v2 .compass-mascot {
+    display: none !important;
+  }
 }
 
 h1,
@@ -159,11 +361,100 @@ textarea {
   animation: dust-drift 4.5s ease-in-out infinite;
 }
 
+@keyframes dust-backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes dust-draw-trail {
+  0% {
+    stroke-dashoffset: 1;
+    opacity: 0;
+  }
+  8% {
+    opacity: 1;
+  }
+  55% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 0;
+  }
+}
+
+@keyframes dust-fly-in {
+  0% {
+    transform: translate(var(--dx), var(--dy)) scale(0.3);
+    opacity: 0;
+  }
+  22% {
+    opacity: 1;
+  }
+  75% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translate(var(--ax), var(--ay)) scale(1);
+    opacity: 0;
+  }
+}
+
+@keyframes dust-panel-in {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.86);
+    filter: blur(5px);
+  }
+  65% {
+    opacity: 1;
+    filter: blur(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+    filter: blur(0);
+  }
+}
+
+.dust-backdrop {
+  animation: dust-backdrop-in 0.35s ease both;
+}
+
+.dust-trail {
+  animation: dust-draw-trail 1.05s ease-in-out both;
+}
+
+.dust-mote {
+  animation-name: dust-fly-in;
+  animation-timing-function: cubic-bezier(0.2, 0.7, 0.3, 1);
+  animation-fill-mode: both;
+}
+
+.dust-panel {
+  animation: dust-panel-in 0.6s cubic-bezier(0.18, 0.8, 0.3, 1) 0.3s both;
+}
+
+.font-display {
+  font-family: var(--font-display);
+}
+
+.font-mono {
+  font-family: var(--font-mono);
+}
+
 .waypoint-marker {
   transition:
     background-color 0.35s ease,
     border-color 0.35s ease,
-    color 0.35s ease;
+    color 0.35s ease,
+    box-shadow 0.25s ease,
+    transform 0.18s ease;
 }
 
 .waypoint-icon {

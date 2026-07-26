@@ -23,8 +23,8 @@ export default function OnboardingWelcome() {
         </div>
         <h1 className="mb-3 text-2xl text-ink">Alo alo</h1>
         <p className="mb-8 text-sm leading-relaxed text-muted">
-          A few short steps will let Pathfinder know what to watch for — or describe yourself to
-          Dust in plain language and skip the form.
+          Welcome to Pathfinder. A few short steps will let us know what to watch for — or describe
+          yourself to Dust in plain language and skip the form.
         </p>
         <button
           type="button"

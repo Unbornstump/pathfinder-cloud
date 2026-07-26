@@ -1,6 +1,7 @@
 import { Navigate, Outlet, createBrowserRouter, RouterProvider } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { DustProvider } from './context/DustContext'
+import { ThemeProvider } from './context/ThemeContext'
 import Splash from './pages/Splash'
 import Login from './pages/Login'
 import Register from './pages/Register'
@@ -16,7 +17,7 @@ import AppShell from './components/AppShell'
 function ProtectedRoute({ children }) {
   const { isAuthenticated, booting } = useAuth()
   if (booting) return <Splash />
-  if (!isAuthenticated) return <Navigate to="/login" replace />
+  if (!isAuthenticated) return <Navigate to="/" replace />
   return children
 }
 
@@ -51,11 +52,13 @@ function ProfileInShell() {
 
 function RootLayout() {
   return (
-    <AuthProvider>
-      <DustProvider>
-        <Outlet />
-      </DustProvider>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <DustProvider>
+          <Outlet />
+        </DustProvider>
+      </AuthProvider>
+    </ThemeProvider>
   )
 }
 

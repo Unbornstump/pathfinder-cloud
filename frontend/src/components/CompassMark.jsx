@@ -1,4 +1,4 @@
-/** Compass mark — blue disc + ring, for dark shell/landing */
+/** Compass mark — adapts to shell chrome; hero uses accent teal token */
 export function CompassMark({ size = 56, className = '', variant = 'hero' }) {
   const s = size
   if (variant === 'shell') {
@@ -11,7 +11,7 @@ export function CompassMark({ size = 56, className = '', variant = 'hero' }) {
         <svg width={s * 0.55} height={s * 0.55} viewBox="0 0 24 24" fill="none">
           <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.5" />
           <path d="M12 5 L14.5 12 L12 19 L9.5 12 Z" fill="currentColor" />
-          <circle cx="12" cy="12" r="1.5" fill="#0c0c0d" />
+          <circle cx="12" cy="12" r="1.5" fill="var(--pf-page)" />
         </svg>
       </div>
     )
@@ -27,10 +27,18 @@ export function CompassMark({ size = 56, className = '', variant = 'hero' }) {
       className={className}
       aria-hidden="true"
     >
-      <circle cx="32" cy="32" r="30" stroke="#60a5fa" strokeWidth="2" fill="none" opacity="0.5" />
-      <circle cx="32" cy="32" r="24" fill="#3b82f6" />
+      <circle
+        cx="32"
+        cy="32"
+        r="30"
+        stroke="var(--pf-teal)"
+        strokeWidth="2"
+        fill="none"
+        opacity="0.5"
+      />
+      <circle cx="32" cy="32" r="24" fill="var(--pf-teal)" />
       <path d="M32 14 L38 32 L32 50 L26 32 Z" fill="#ffffff" />
-      <circle cx="32" cy="32" r="3.5" fill="#1e3a5f" />
+      <circle cx="32" cy="32" r="3.5" fill="var(--pf-teal-light)" />
     </svg>
   )
 }

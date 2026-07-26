@@ -1,16 +1,20 @@
 import { Link } from 'react-router-dom'
 import { CompassMark } from '../components/CompassMark'
+import ThemeToggle from '../components/ThemeToggle'
 
 export default function HowItWorks() {
   return (
-    <div className="min-h-screen bg-page px-4 py-16">
+    <div className="relative min-h-screen bg-page px-4 py-16">
+      <div className="absolute right-4 top-4 md:right-8 md:top-6">
+        <ThemeToggle />
+      </div>
       <div className="mx-auto max-w-lg">
         <div className="mb-8 flex justify-center">
           <Link to="/">
             <CompassMark size={48} />
           </Link>
         </div>
-        <h1 className="mb-4 text-center text-2xl text-ink">How Alo alo points you</h1>
+        <h1 className="mb-4 text-center text-2xl text-ink">How Pathfinder points you</h1>
         <p className="mb-10 text-center text-sm text-muted">
           Three stages before anything reaches your feed — so you never get a raw link dump.
         </p>

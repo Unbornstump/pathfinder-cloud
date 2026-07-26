@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Check, Send, X } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../lib/api'
@@ -6,8 +6,29 @@ import { useAuth } from '../context/AuthContext'
 import { typeMeta } from '../lib/utils'
 import DustAvatar from './DustAvatar'
 
+const DUST_COLORS = ['#D9A756', '#B5624A', '#6E8259', '#3654A6']
+const CLOSE_MS = 520
+
+function buildParticles(origin, center) {
+  return Array.from({ length: 18 }, (_, i) => {
+    const jitterX = (Math.random() - 0.5) * 110
+    const jitterY = (Math.random() - 0.5) * 110
+    return {
+      id: i,
+      dx: origin.x - center.x + jitterX,
+      dy: origin.y - center.y + jitterY,
+      delay: (Math.random() * 0.45).toFixed(2),
+      duration: (0.85 + Math.random() * 0.55).toFixed(2),
+      size: 3 + Math.random() * 5,
+      color: DUST_COLORS[i % DUST_COLORS.length],
+      arc: (Math.random() - 0.5) * 60,
+    }
+  })
+}
+
 /**
  * Dust — trail-style conversation. Proposes; never writes without confirm.
+ * Opens as a centered ink panel with mote trail from the rail trigger.
  * Actions under a proposal: exactly two — apply / adjust first.
  */
 export default function DustPanel({ open, onClose }) {
@@ -16,11 +37,66 @@ export default function DustPanel({ open, onClose }) {
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
   const [messages, setMessages] = useState([])
+  const [visible, setVisible] = useState(false)
+  const [isClosing, setIsClosing] = useState(false)
+  const [origin, setOrigin] = useState({ x: 56, y: 520 })
+  const [center, setCenter] = useState({ x: 590, y: 372 })
+  const [particleKey, setParticleKey] = useState(0)
   const bottomRef = useRef(null)
   const seeded = useRef(false)
+  const closeTimer = useRef(null)
+
+  const particles = useMemo(
+    () => buildParticles(origin, center),
+    // regenerate on each open (particleKey)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [particleKey],
+  )
+
+  const dir = isClosing ? 'reverse' : 'normal'
+
+  function measureGeometry() {
+    const trigger =
+      document.querySelector('[data-dust-trigger]') ||
+      document.querySelector('[aria-label="Ask Dust"]')
+    const vw = window.innerWidth
+    const vh = window.innerHeight
+    const nextCenter = { x: vw / 2, y: vh / 2 }
+    let nextOrigin = { x: 56, y: vh * 0.72 }
+    if (trigger) {
+      const r = trigger.getBoundingClientRect()
+      nextOrigin = { x: r.left + r.width / 2, y: r.top + r.height / 2 }
+    }
+    setOrigin(nextOrigin)
+    setCenter(nextCenter)
+    setParticleKey((k) => k + 1)
+  }
+
+  function requestClose() {
+    if (!visible || isClosing) return
+    onClose()
+  }
 
   useEffect(() => {
-    if (!open) {
+    if (open) {
+      clearTimeout(closeTimer.current)
+      measureGeometry()
+      setIsClosing(false)
+      setVisible(true)
+      return undefined
+    }
+    if (!visible) return undefined
+    setIsClosing(true)
+    closeTimer.current = setTimeout(() => {
+      setVisible(false)
+      setIsClosing(false)
+    }, CLOSE_MS)
+    return () => clearTimeout(closeTimer.current)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open])
+
+  useEffect(() => {
+    if (!visible || isClosing) {
       seeded.current = false
       return
     }
@@ -39,13 +115,13 @@ export default function DustPanel({ open, onClose }) {
           : "Tell me what to change — a new tag, a type to turn on, or a location update. I'll propose it; nothing is saved until you confirm.",
       },
     ])
-  }, [open, profile])
+  }, [visible, isClosing, profile])
 
   useEffect(() => {
-    if (open) bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, open])
+    if (visible && !isClosing) bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages, visible, isClosing])
 
-  if (!open) return null
+  if (!visible) return null
 
   async function send() {
     const text = input.trim()
@@ -155,7 +231,7 @@ export default function DustPanel({ open, onClose }) {
         },
       ])
       if (!profile.onboarding_complete) {
-        onClose()
+        requestClose()
         navigate('/matches', { replace: true })
       }
     } catch (err) {
@@ -187,32 +263,91 @@ export default function DustPanel({ open, onClose }) {
     )
   }
 
+  const trailPath = `M ${origin.x} ${origin.y} Q ${(origin.x + center.x) / 2 - 40} ${origin.y - 120} ${center.x} ${center.y}`
+
   return (
     <>
       <button
         type="button"
-        className="fixed inset-0 z-40 bg-ink/25"
+        className="dust-backdrop fixed inset-0 z-40 border-0 bg-[rgba(30,36,32,0.38)]"
+        style={{ animationDirection: dir }}
         aria-label="Close Dust backdrop"
-        onClick={onClose}
+        onClick={requestClose}
       />
+
+      <svg
+        className="pointer-events-none fixed inset-0 z-[45] h-full w-full"
+        aria-hidden="true"
+      >
+        <path
+          className="dust-trail"
+          d={trailPath}
+          fill="none"
+          stroke="#D9A756"
+          strokeWidth="2"
+          strokeLinecap="round"
+          pathLength="1"
+          strokeDasharray="1"
+          style={{ animationDirection: dir }}
+        />
+      </svg>
+
+      <div className="pointer-events-none fixed inset-0 z-[46]" aria-hidden="true">
+        {particles.map((p) => (
+          <span
+            key={`${particleKey}-${p.id}`}
+            className="dust-mote absolute rounded-full"
+            style={{
+              left: center.x,
+              top: center.y,
+              width: p.size,
+              height: p.size,
+              background: p.color,
+              '--dx': `${p.dx}px`,
+              '--dy': `${p.dy}px`,
+              '--ax': `${p.arc}px`,
+              '--ay': `${p.arc / 2}px`,
+              animationDuration: `${p.duration}s`,
+              animationDelay: `${p.delay}s`,
+              animationDirection: dir,
+            }}
+          />
+        ))}
+      </div>
+
       <aside
-        className="fixed inset-x-0 bottom-0 z-50 flex max-h-[85vh] flex-col rounded-t-[12px] border border-border bg-card md:inset-y-0 md:left-auto md:right-0 md:max-h-none md:w-[400px] md:rounded-none md:border-l md:border-t-0"
+        className="dust-panel fixed left-1/2 top-1/2 z-50 flex max-h-[min(85vh,640px)] w-[min(440px,92vw)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl bg-dust-panel shadow-[0_24px_60px_rgba(0,0,0,0.35)]"
+        style={{ animationDirection: dir }}
         role="dialog"
         aria-label="Dust"
+        aria-modal="true"
       >
-        <header className="flex items-start gap-3 border-b border-border px-4 py-3">
-          <DustAvatar size={32} />
-          <div className="min-w-0 flex-1">
-            <h2 className="text-base text-ink">Dust</h2>
-            <p className="text-xs text-muted">Traces on your trail</p>
+        <header className="flex items-center justify-between border-b border-dust-panel-border px-5 py-[18px]">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-[30px] w-[30px] items-center justify-center rounded-full bg-dust-panel-elevated">
+              <DustAvatar size={17} />
+            </span>
+            <div>
+              <h2 className="font-display text-base font-semibold leading-none text-dust-bone">
+                Dust
+              </h2>
+              <p className="font-mono mt-1 text-[10.5px] tracking-[0.03em] text-dust-moss">
+                TRACES ON YOUR TRAIL
+              </p>
+            </div>
           </div>
-          <button type="button" onClick={onClose} className="text-muted hover:text-ink" aria-label="Close">
+          <button
+            type="button"
+            onClick={requestClose}
+            className="p-1 text-label hover:text-dust-bone"
+            aria-label="Close"
+          >
             <X size={18} />
           </button>
         </header>
 
-        <div className="relative flex-1 overflow-y-auto px-4 py-4">
-          <div className="trail-line absolute bottom-4 left-[23px] top-4" />
+        <div className="relative flex-1 overflow-y-auto px-5 py-5">
+          <div className="trail-line trail-line-gold absolute bottom-4 left-[23px] top-4 opacity-40" />
           <ul className="relative space-y-5">
             {messages.map((msg, i) => (
               <li
@@ -223,38 +358,40 @@ export default function DustPanel({ open, onClose }) {
                 <span
                   className={`waypoint-marker relative z-10 mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 ${
                     msg.status === 'confirmed'
-                      ? 'border-experiential bg-experiential text-white'
+                      ? 'border-dust-moss bg-dust-moss text-dust-bone'
                       : msg.role === 'user'
                         ? 'border-teal bg-teal'
-                        : 'border-trail bg-page'
+                        : 'border-trail-gold/50 bg-dust-panel-elevated'
                   }`}
                 >
                   {msg.status === 'confirmed' ? (
                     <Check size={12} className="ease-rise" />
+                  ) : msg.role === 'dust' ? (
+                    <span className="h-1.5 w-1.5 rounded-full bg-trail-gold" />
                   ) : null}
                 </span>
                 <div className="min-w-0 flex-1 pb-1">
-                  <p className="text-sm leading-relaxed text-ink">{msg.text}</p>
+                  <p className="text-sm leading-relaxed text-[#DAD8CE]">{msg.text}</p>
                   {hasProposal(msg) && msg.status !== 'confirmed' && (
                     <div className="mt-3 space-y-2">
                       {(msg.suggestions?.add_tags || []).length > 0 && (
-                        <p className="text-xs text-muted">
+                        <p className="text-xs text-label">
                           Tags: {msg.suggestions.add_tags.join(', ')}
                         </p>
                       )}
                       {(msg.suggestions?.enable_types || []).length > 0 && (
-                        <p className="text-xs text-muted">
+                        <p className="text-xs text-label">
                           Types:{' '}
                           {msg.suggestions.enable_types.map((t) => typeMeta(t).short).join(', ')}
                         </p>
                       )}
                       {msg.suggestions?.profile_patch?.location && (
-                        <p className="text-xs text-muted">
+                        <p className="text-xs text-label">
                           Location: {msg.suggestions.profile_patch.location}
                         </p>
                       )}
                       {msg.suggestions?.profile_patch?.education_level && (
-                        <p className="text-xs text-muted">
+                        <p className="text-xs text-label">
                           Education: {msg.suggestions.profile_patch.education_level}
                         </p>
                       )}
@@ -263,7 +400,7 @@ export default function DustPanel({ open, onClose }) {
                           type="button"
                           disabled={busy}
                           onClick={() => applySuggestions(msg)}
-                          className="text-sm font-medium text-teal hover:text-teal-dark disabled:opacity-60"
+                          className="text-sm font-medium text-trail-gold hover:brightness-110 disabled:opacity-60"
                         >
                           Apply this
                         </button>
@@ -280,7 +417,7 @@ export default function DustPanel({ open, onClose }) {
                               },
                             ])
                           }
-                          className="text-sm text-muted hover:text-ink"
+                          className="text-sm text-label hover:text-dust-bone"
                         >
                           Adjust first
                         </button>
@@ -295,15 +432,15 @@ export default function DustPanel({ open, onClose }) {
         </div>
 
         <form
-          className="flex gap-2 border-t border-border p-3"
+          className="flex gap-2.5 border-t border-dust-panel-border p-4"
           onSubmit={(e) => {
             e.preventDefault()
             send()
           }}
         >
           <input
-            className="flex-1 rounded-[8px] border border-border px-3 py-2 text-sm outline-none focus:border-teal"
-            placeholder="What are you looking for?"
+            className="flex-1 rounded-[10px] border border-dust-panel-border bg-dust-panel-elevated px-3 py-2.5 text-[13.5px] text-dust-bone outline-none placeholder:text-label focus:border-trail-gold"
+            placeholder="Ask Dust to update your trail…"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             disabled={busy}
@@ -311,10 +448,10 @@ export default function DustPanel({ open, onClose }) {
           <button
             type="submit"
             disabled={busy || !input.trim()}
-            className="rounded-[8px] bg-teal px-3 py-2 text-white hover:bg-teal-dark disabled:opacity-50"
+            className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-[10px] bg-trail-gold text-dust-panel hover:brightness-105 disabled:opacity-50"
             aria-label="Send"
           >
-            <Send size={16} />
+            <Send size={15} />
           </button>
         </form>
       </aside>

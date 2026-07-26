@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Lock, Mail, User } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import ThemeToggle from '../components/ThemeToggle'
 
 export default function Register() {
   const { register } = useAuth()
@@ -33,7 +34,10 @@ export default function Register() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-page px-4 py-10">
+    <div className="relative flex min-h-screen items-center justify-center bg-page px-4 py-10">
+      <div className="absolute right-4 top-4 md:right-8 md:top-6">
+        <ThemeToggle />
+      </div>
       <div className="w-full max-w-md rounded-[12px] border border-border bg-card p-8">
         <h1 className="mb-6 text-center text-2xl text-ink">Create an account</h1>
         <form onSubmit={handleSubmit} className="space-y-4">
