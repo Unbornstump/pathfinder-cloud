@@ -292,7 +292,7 @@ function ProfileOnboardingWizard({ profile, updateProfile, refreshMatches, navig
                         completed
                           ? 'border-experiential bg-experiential text-white'
                           : current
-                            ? 'border-teal bg-teal text-white'
+                            ? 'chip-active'
                             : 'border-trail bg-page text-trail'
                       }`}
                     >

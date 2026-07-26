@@ -46,6 +46,9 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "username",
             "email",
             "name",
+            "bio",
+            "photo_data",
+            "gender",
             "age",
             "location",
             "education_level",
@@ -73,6 +76,31 @@ class UserProfileSerializer(serializers.ModelSerializer):
         if not isinstance(value, list):
             raise serializers.ValidationError("Must be a list.")
         return [str(t).strip() for t in value if str(t).strip()]
+
+    def validate_bio(self, value):
+        text = (value or "").strip()
+        if len(text) > 500:
+            raise serializers.ValidationError("Bio must be 500 characters or fewer.")
+        return text
+
+    def validate_gender(self, value):
+        raw = (value or "").strip().lower()
+        if not raw:
+            return ""
+        if raw in ("male", "female"):
+            return raw
+        raise serializers.ValidationError("Choose Male or Female.")
+
+    def validate_photo_data(self, value):
+        if not value:
+            return ""
+        raw = str(value)
+        if not raw.startswith("data:image/"):
+            raise serializers.ValidationError("Photo must be an image data URL.")
+        # ~180KB text budget keeps payloads light for private thumbnails
+        if len(raw) > 180_000:
+            raise serializers.ValidationError("Photo is too large — try a smaller image.")
+        return raw
 
     def update(self, instance, validated_data):
         user_data = validated_data.pop("user", {})

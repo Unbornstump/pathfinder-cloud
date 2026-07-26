@@ -25,7 +25,9 @@ function RailLink({ to, label, icon: Icon, badge }) {
       aria-label={label}
       className={({ isActive }) =>
         `group flex w-full items-center justify-center gap-3 rounded-xl px-2 py-2.5 text-sm outline-none transition focus-visible:ring-2 focus-visible:ring-teal md:justify-start md:px-3 ${
-          isActive ? 'bg-teal text-white' : 'text-muted hover:bg-page hover:text-ink'
+          isActive
+            ? 'nav-item-active'
+            : 'text-muted hover:bg-page hover:text-ink'
         }`
       }
     >
@@ -53,6 +55,7 @@ export default function AppShell() {
 
   const unread = (notifications || []).filter((n) => !n.is_read).length
   const initial = (profile?.name || profile?.username || '?').charAt(0).toUpperCase()
+  const photo = profile?.photo_data || ''
 
   const pageTitle = location.pathname.startsWith('/notifications')
     ? 'Notifications'
@@ -100,18 +103,21 @@ export default function AppShell() {
 
         <div className="mx-2 my-3 border-t border-dashed border-border-strong md:mx-3" />
 
+        <p className="mb-1 hidden px-3 font-mono text-[10px] uppercase tracking-widest text-label md:block">
+          Dust
+        </p>
         <NavLink
           to="/dust"
           data-dust-trigger
           title="Dust"
           aria-label="Dust"
           className={({ isActive }) =>
-            `dust-always-on mt-auto flex w-full items-center justify-center gap-3 rounded-xl px-2 py-2.5 text-sm outline-none transition focus-visible:ring-2 focus-visible:ring-teal md:justify-start md:px-3 ${
-              isActive ? 'bg-teal text-white' : 'text-ink hover:bg-page'
+            `dust-always-on flex w-full items-center justify-center gap-3 rounded-xl px-2 py-2.5 text-sm outline-none transition focus-visible:ring-2 focus-visible:ring-teal md:justify-start md:px-3 ${
+              isActive ? 'nav-item-active' : 'text-ink hover:bg-page'
             }`
           }
         >
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#1e2420] text-[#f6f4ec] shadow-[0_0_0_4px_rgba(217,167,86,0.18)]">
+          <span className="dust-nav-badge flex h-8 w-8 shrink-0 items-center justify-center rounded-full">
             <DustAvatar size={16} />
           </span>
           <span className="hidden font-medium md:inline">Dust</span>
@@ -127,10 +133,15 @@ export default function AppShell() {
         <div className="flex shrink-0 items-center gap-2">
           <ThemeToggle />
           <div
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-teal text-sm font-medium text-white"
-            title={profile?.username}
+            className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-teal text-sm font-medium text-white"
+            title={profile?.name || profile?.username}
+            aria-label={profile?.name || profile?.username || 'Account'}
           >
-            {initial}
+            {photo ? (
+              <img src={photo} alt="" className="h-full w-full object-cover" />
+            ) : (
+              initial
+            )}
           </div>
           <button
             type="button"

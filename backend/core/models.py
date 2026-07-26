@@ -94,6 +94,19 @@ class UserProfile(models.Model):
         related_name="profile",
     )
     name = models.CharField(max_length=255, blank=True)
+    bio = models.TextField(
+        blank=True,
+        help_text="Short self-description in the user's own words.",
+    )
+    photo_data = models.TextField(
+        blank=True,
+        help_text="Optional profile photo as a compressed data URL (private).",
+    )
+    gender = models.CharField(
+        max_length=32,
+        blank=True,
+        help_text="Optional: male | female. Blank until the user chooses; never inferred.",
+    )
     age = models.PositiveSmallIntegerField(null=True, blank=True)
     location = models.CharField(max_length=255, blank=True)
     education_level = models.CharField(max_length=255, blank=True)

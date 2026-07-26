@@ -160,16 +160,22 @@ export default function Landing() {
   const [activeSection, setActiveSection] = useState('hero')
   const [scrollProgress, setScrollProgress] = useState(0)
   const [needleAngle, setNeedleAngle] = useState(135)
+  const [compassDocked, setCompassDocked] = useState(false)
+  const [compassTraveling, setCompassTraveling] = useState(false)
+  const [compassPos, setCompassPos] = useState({ left: 24, top: 18, ready: false })
 
   const canvasRef = useRef(null)
   const heroRef = useRef(null)
   const mouseRef = useRef({ x: -9999, y: -9999 })
   const areaRefs = useRef([])
   const sectionRefs = useRef({})
+  const headerCompassSlotRef = useRef(null)
   const lastScrollY = useRef(0)
   const targetAngle = useRef(135)
   const idleTimer = useRef(null)
   const rafId = useRef(null)
+  const travelTimer = useRef(null)
+  const compassDockedRef = useRef(false)
 
   const q = query.trim().toLowerCase()
   const results = q
@@ -289,9 +295,10 @@ export default function Landing() {
     return () => obs.disconnect()
   }, [])
 
-  /* section spy + roaming compass needle */
+  /* section spy + roaming needle + single traveling compass */
   useEffect(() => {
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const narrow = window.matchMedia('(max-width: 640px)')
     const obs = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -302,13 +309,44 @@ export default function Landing() {
     )
     Object.values(sectionRefs.current).forEach((el) => el && obs.observe(el))
 
-    if (reduceMotion) return () => obs.disconnect()
+    function measureCompass(docked, progress) {
+      const slot = headerCompassSlotRef.current
+      if (!slot) return
+      const rect = slot.getBoundingClientRect()
+      if (narrow.matches) {
+        setCompassPos({ left: rect.left, top: rect.top, ready: true })
+        return
+      }
+      if (!docked) {
+        setCompassPos({ left: rect.left, top: rect.top, ready: true })
+        return
+      }
+      const dockLeft = 20
+      const dockTop = window.innerHeight * (0.14 + progress * 0.66)
+      setCompassPos({ left: dockLeft, top: dockTop, ready: true })
+    }
 
     function onScroll() {
+      const y = window.scrollY
       const max = document.documentElement.scrollHeight - window.innerHeight
-      setScrollProgress(max > 0 ? Math.min(1, Math.max(0, window.scrollY / max)) : 0)
-      const delta = window.scrollY - lastScrollY.current
-      lastScrollY.current = window.scrollY
+      const progress = max > 0 ? Math.min(1, Math.max(0, y / max)) : 0
+      setScrollProgress(progress)
+
+      const shouldDock = !narrow.matches && y > 64
+      if (shouldDock !== compassDockedRef.current) {
+        compassDockedRef.current = shouldDock
+        setCompassDocked(shouldDock)
+        if (!reduceMotion) {
+          setCompassTraveling(true)
+          clearTimeout(travelTimer.current)
+          travelTimer.current = setTimeout(() => setCompassTraveling(false), 340)
+        }
+      }
+      measureCompass(shouldDock, progress)
+
+      if (reduceMotion) return
+      const delta = y - lastScrollY.current
+      lastScrollY.current = y
       targetAngle.current += delta * 1.6
       clearTimeout(idleTimer.current)
       idleTimer.current = setTimeout(() => {
@@ -316,59 +354,96 @@ export default function Landing() {
         targetAngle.current = resting
       }, 650)
     }
-    window.addEventListener('scroll', onScroll, { passive: true })
 
-    function tick() {
-      setNeedleAngle((a) => a + (targetAngle.current - a) * 0.08)
-      rafId.current = requestAnimationFrame(tick)
+    function onResize() {
+      measureCompass(compassDockedRef.current, scrollProgress)
     }
-    rafId.current = requestAnimationFrame(tick)
+
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('resize', onResize)
+
+    let tickRaf = null
+    if (!reduceMotion) {
+      function tick() {
+        setNeedleAngle((a) => a + (targetAngle.current - a) * 0.08)
+        tickRaf = requestAnimationFrame(tick)
+      }
+      tickRaf = requestAnimationFrame(tick)
+      rafId.current = tickRaf
+    }
 
     return () => {
       obs.disconnect()
       window.removeEventListener('scroll', onScroll)
-      cancelAnimationFrame(rafId.current)
+      window.removeEventListener('resize', onResize)
+      cancelAnimationFrame(tickRaf)
       clearTimeout(idleTimer.current)
+      clearTimeout(travelTimer.current)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   function scrollToDust() {
     sectionRefs.current.dust?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
+  const compassSize = compassDocked ? 44 : 18
+  const iconSize = compassDocked ? 20 : 18
+  const showCompassChrome = compassDocked
+
   return (
     <div className="landing-v2 f-body relative min-h-screen w-full">
-      {/* roaming compass — section guide; Dust lives behind sign-in */}
+      {/* One compass — travels between header wordmark and floating dock */}
       <button
         type="button"
-        onClick={scrollToDust}
-        aria-label="Jump to Dust"
-        className="compass-mascot fixed left-5 z-40 hidden items-center gap-3 sm:flex"
-        style={{ top: `${14 + scrollProgress * 66}%` }}
+        onClick={() => {
+          if (compassDocked) scrollToDust()
+          else window.scrollTo({ top: 0, behavior: 'smooth' })
+        }}
+        aria-label={compassDocked ? 'Jump to Dust' : 'Pathfinder home'}
+        className={`compass-mascot fixed z-50 flex items-center gap-3 ${
+          compassTraveling ? 'compass-traveling' : ''
+        } ${compassDocked ? 'compass-docked' : 'compass-home'}`}
+        style={{
+          left: compassPos.ready ? compassPos.left : -999,
+          top: compassPos.ready ? compassPos.top : -999,
+          opacity: compassPos.ready ? 1 : 0,
+          pointerEvents: compassPos.ready ? 'auto' : 'none',
+        }}
       >
         <span
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full shadow-[0_4px_20px_rgba(0,0,0,0.25)]"
-          style={{ background: 'var(--land-card)', border: '1px solid var(--land-border)' }}
+          className="compass-mascot-mark flex shrink-0 items-center justify-center"
+          style={{
+            width: compassSize,
+            height: compassSize,
+            borderRadius: showCompassChrome ? 9999 : 0,
+            background: showCompassChrome ? 'var(--land-card)' : 'transparent',
+            border: showCompassChrome ? '1px solid var(--land-border)' : 'none',
+            boxShadow: showCompassChrome ? '0 4px 20px rgba(0,0,0,0.25)' : 'none',
+          }}
         >
           <Compass
-            size={20}
+            size={iconSize}
             style={{
               color: 'var(--land-accent)',
-              transform: `rotate(${needleAngle}deg)`,
-              transition: 'transform 60ms linear',
+              transform: compassDocked ? `rotate(${needleAngle}deg)` : undefined,
+              transition: compassDocked ? 'transform 60ms linear' : undefined,
             }}
           />
         </span>
-        <span
-          className="compass-mascot-label f-mono rounded-full px-2.5 py-1 text-[10px] uppercase tracking-widest"
-          style={{
-            background: 'var(--land-card)',
-            border: '1px solid var(--land-border)',
-            color: 'var(--land-muted)',
-          }}
-        >
-          {SECTION_LABELS[activeSection] || 'exploring'}
-        </span>
+        {showCompassChrome ? (
+          <span
+            className="compass-mascot-label f-mono rounded-full px-2.5 py-1 text-[10px] uppercase tracking-widest"
+            style={{
+              background: 'var(--land-card)',
+              border: '1px solid var(--land-border)',
+              color: 'var(--land-muted)',
+            }}
+          >
+            {SECTION_LABELS[activeSection] || 'exploring'}
+          </span>
+        ) : null}
       </button>
 
       {/* nav */}
@@ -380,7 +455,12 @@ export default function Landing() {
         }}
       >
         <Link to="/" className="flex items-center gap-2">
-          <Compass size={18} style={{ color: 'var(--land-accent)' }} />
+          {/* Slot reserves header space; the traveling compass overlays this when home */}
+          <span
+            ref={headerCompassSlotRef}
+            className="inline-block h-[18px] w-[18px] shrink-0"
+            aria-hidden="true"
+          />
           <span className="f-display text-lg tracking-tight">Pathfinder</span>
         </Link>
         <nav
