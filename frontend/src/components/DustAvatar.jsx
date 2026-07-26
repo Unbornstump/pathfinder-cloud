@@ -1,13 +1,22 @@
 /** Soft dust-mote mark — theme tokens keep contrast on the badge in light and dark. */
-export default function DustAvatar({ size = 28, className = '', animated = true }) {
+export default function DustAvatar({
+  size = 28,
+  className = '',
+  animated = true,
+  thinking = false,
+}) {
   const s = size
-  const cls = animated ? 'dust-particle' : undefined
+  const cls = !animated
+    ? undefined
+    : thinking
+      ? 'dust-particle dust-particle-thinking'
+      : 'dust-particle'
   return (
     <svg
       width={s}
       height={s}
       viewBox="0 0 24 24"
-      className={`dust-avatar ${className}`.trim()}
+      className={`dust-avatar ${thinking ? 'dust-avatar-thinking' : ''} ${className}`.trim()}
       aria-hidden="true"
       fill="none"
     >

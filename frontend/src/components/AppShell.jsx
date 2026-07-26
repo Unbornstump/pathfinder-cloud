@@ -113,7 +113,7 @@ export default function AppShell() {
           aria-label="Dust"
           className={({ isActive }) =>
             `dust-always-on flex w-full items-center justify-center gap-3 rounded-xl px-2 py-2.5 text-sm outline-none transition focus-visible:ring-2 focus-visible:ring-teal md:justify-start md:px-3 ${
-              isActive ? 'nav-item-active' : 'text-ink hover:bg-page'
+              isActive ? 'nav-item-active dust-nav-selected' : 'text-ink hover:bg-page'
             }`
           }
         >

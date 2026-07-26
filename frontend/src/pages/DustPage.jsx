@@ -71,6 +71,14 @@ function proposalFields(suggestions) {
   return fields
 }
 
+const BREATH_LABELS = ['Gathering dust…', 'Sweeping the trail…']
+const BREATH_MS = 560
+const FALLBACK_EXTRA_MS = 420
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
 /**
  * Dust’s dedicated room — context + persistent conversation.
  * Uses shared theme tokens so light/dark match the rest of the shell.
@@ -81,7 +89,7 @@ export default function DustPage() {
   const navigate = useNavigate()
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
-  const [workingLabel, setWorkingLabel] = useState('Sweeping…')
+  const [workingLabel, setWorkingLabel] = useState(BREATH_LABELS[0])
   const bottomRef = useRef(null)
   const sendingRef = useRef(false)
 
@@ -107,15 +115,21 @@ export default function DustPage() {
       ...m,
       { id: `u-${Date.now()}`, role: 'user', status: 'open', text: trimmed },
     ])
-    setWorkingLabel('Filtering intent…')
+    setWorkingLabel(BREATH_LABELS[Math.floor(Math.random() * BREATH_LABELS.length)])
     setBusy(true)
+    const started = Date.now()
     try {
       const data = await api('/profile/dust/', { method: 'POST', body: { message: trimmed } })
       const hasProp = hasProposal({ suggestions: data.suggestions })
       const reply = data.reply || ''
       const looksSoft =
-        /couldn'?t|could not|not sure|try rephrasing|more specific/i.test(reply)
+        /couldn'?t|could not|not sure|try rephrasing|more specific|a bit thin|try something like/i.test(
+          reply,
+        )
       const kind = hasProp ? 'proposal' : looksSoft ? 'fallback' : 'guidance'
+      const minWait = kind === 'fallback' ? BREATH_MS + FALLBACK_EXTRA_MS : BREATH_MS
+      const elapsed = Date.now() - started
+      if (elapsed < minWait) await sleep(minWait - elapsed)
       setMessages((m) => [
         ...m,
         {
@@ -126,9 +140,12 @@ export default function DustPage() {
           text: data.reply,
           suggestions: data.suggestions,
           mode: data.mode,
+          arrive: true,
         },
       ])
     } catch (err) {
+      const elapsed = Date.now() - started
+      if (elapsed < BREATH_MS) await sleep(BREATH_MS - elapsed)
       setMessages((m) => [
         ...m,
         {
@@ -137,6 +154,7 @@ export default function DustPage() {
           status: 'open',
           kind: 'error',
           text: err.message || "Dust couldn't respond just now.",
+          arrive: true,
         },
       ])
     } finally {
@@ -265,7 +283,7 @@ export default function DustPage() {
       <div className="grid min-h-0 flex-1 gap-4 md:grid-cols-[240px_1fr]">
         <aside className="flex flex-col rounded-[12px] border border-border bg-card p-4 md:overflow-y-auto">
           <div className="mb-4 flex items-center gap-2">
-            <DustAvatar size={28} />
+            <DustAvatar size={28} thinking={busy} />
             <div>
               <h2 className="font-display text-base text-ink">Your trail</h2>
               <p className="font-mono text-[10px] uppercase tracking-wider text-muted">
@@ -328,18 +346,19 @@ export default function DustPage() {
 
           <div className="relative flex-1 overflow-y-auto px-5 py-5" role="log" aria-live="polite">
             <ul className="space-y-5">
-              {messages.map((msg, i) => {
+              {messages.map((msg) => {
                 const kind = messageKind(msg)
                 const isUser = kind === 'user'
                 const isFallback = kind === 'fallback' || kind === 'error'
-                const isProposal = kind === 'proposal' && msg.status !== 'confirmed' && msg.status !== 'skipped'
+                const isProposal =
+                  kind === 'proposal' && msg.status !== 'confirmed' && msg.status !== 'skipped'
                 const fields = isProposal ? proposalFields(msg.suggestions) : []
+                const arrives = !isUser && (msg.arrive || msg.id === 'intro' || msg.id?.startsWith('intro'))
 
                 return (
                   <li
                     key={msg.id}
-                    className="ease-rise flex items-start gap-3"
-                    style={{ animationDelay: `${Math.min(i, 6) * 40}ms` }}
+                    className={`flex items-start gap-3 ${arrives ? 'dust-reply-in' : ''}`}
                   >
                     <span
                       className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 ${
@@ -411,17 +430,19 @@ export default function DustPage() {
               })}
 
               {busy && (
-                <li className="flex items-start gap-3" aria-busy="true">
+                <li className="dust-reply-in flex items-start gap-3" aria-busy="true">
                   <span
                     className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 border-trail-gold/50 bg-page"
                     aria-hidden="true"
                   >
-                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-trail-gold" />
+                    <DustAvatar size={14} thinking />
                   </span>
-                  <p className="pt-0.5 font-mono text-xs uppercase tracking-wider text-muted">
+                  <p className="pt-0.5 text-sm text-muted">
                     {workingLabel}
-                    <span className="dust-working-dots" aria-hidden="true">
-                      …
+                    <span className="dust-breath-dots" aria-hidden="true">
+                      <span />
+                      <span />
+                      <span />
                     </span>
                   </p>
                 </li>

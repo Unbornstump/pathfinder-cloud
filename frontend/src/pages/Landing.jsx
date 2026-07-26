@@ -1,85 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Search, Sparkles, Compass, ChevronRight } from 'lucide-react'
-import ThemeToggle from '../components/ThemeToggle'
 import DustAvatar from '../components/DustAvatar'
+import PathfinderNavActions, { DustMoteIcon } from '../components/PathfinderNavActions'
 
 /* ---------------------------------- data ---------------------------------- */
-
-const OPPORTUNITIES = [
-  {
-    cat: 'Jobs',
-    title: 'Audit Associate — Nairobi',
-    meta: 'Closes Aug 14 · KPMG East Africa',
-    tags: ['job', 'audit', 'finance', 'nairobi'],
-  },
-  {
-    cat: 'Internships',
-    title: 'Finance Attachment, Q4 intake',
-    meta: 'Requires supervisor sign-off · KCB Group',
-    tags: ['attachment', 'finance', 'internship'],
-  },
-  {
-    cat: 'Internships',
-    title: 'Software Engineering Internship',
-    meta: 'Remote · 3 months · Sendy',
-    tags: ['internship', 'remote', 'tech', 'software'],
-  },
-  {
-    cat: 'Research grants & fellowships',
-    title: 'Mastercard Foundation Research Grant',
-    meta: 'Closes Sep 2 · proposal required',
-    tags: ['research grant', 'funding', 'fellowship', 'grant'],
-  },
-  {
-    cat: 'Research grants & fellowships',
-    title: 'Wellcome Trust Early-Career Fellowship',
-    meta: 'Closes Oct 20 · health sciences',
-    tags: ['fellowship', 'research', 'health'],
-  },
-  {
-    cat: 'Accelerators & pitch funding',
-    title: 'Antler East Africa, Cohort 6',
-    meta: 'Applications open · Nairobi',
-    tags: ['accelerator', 'pitch', 'funding', 'startup'],
-  },
-  {
-    cat: 'Scholarships & short courses',
-    title: 'DAAD Short Course — Data Science',
-    meta: 'Closes Aug 30 · fully funded',
-    tags: ['scholarship', 'course', 'data science'],
-  },
-  {
-    cat: 'Residencies & cultural exchange',
-    title: 'Alliance Française Artist Residency',
-    meta: 'Nairobi · 6 weeks',
-    tags: ['residency', 'arts', 'exchange'],
-  },
-  {
-    cat: 'Conferences & mentorships',
-    title: 'DevFest Nairobi — Speaker Mentors',
-    meta: '3 fintech mentors matched',
-    tags: ['mentorship', 'conference', 'tech', 'fintech'],
-  },
-  {
-    cat: 'Civic & advocacy work',
-    title: 'County Budget Watch, Volunteer Analyst',
-    meta: 'Part-time · Nairobi',
-    tags: ['civic', 'advocacy', 'volunteer'],
-  },
-  {
-    cat: 'Jobs',
-    title: 'Remote Junior Data Analyst',
-    meta: 'Closes Aug 21 · Series A startup',
-    tags: ['job', 'remote', 'data', 'analyst'],
-  },
-  {
-    cat: 'Internships',
-    title: 'Legal Attachment — Corporate Desk',
-    meta: 'Requires supervisor sign-off · Nairobi',
-    tags: ['attachment', 'legal'],
-  },
-]
 
 const LIVE_FEED = [
   { time: '2m ago', cat: 'JOB', title: 'Audit Associate, Nairobi · closes Aug 14' },
@@ -152,10 +77,28 @@ const SECTION_LABELS = {
 
 const CHIPS = ['research grant', 'remote job', 'mentorship', 'attachment finance']
 
+/** One playful placeholder card — echoes the query; never pretends to be live. */
+function buildTeaserCard(rawQuery) {
+  const q = rawQuery.trim()
+  const short = q.length > 42 ? `${q.slice(0, 40)}…` : q
+  const lower = q.toLowerCase()
+  const placeHint =
+    lower.match(/\bin\s+([a-z][a-z\s-]{1,24})/)?.[1]?.trim() ||
+    lower.match(/\b(nairobi|mombasa|kisumu|meru|roysambu|remote)\b/)?.[1] ||
+    'somewhere'
+  const place = placeHint.charAt(0).toUpperCase() + placeHint.slice(1)
+
+  return {
+    title: `${short} — somewhere, probably`,
+    meta: `Looks promising near ${place} · details blurred on purpose`,
+  }
+}
+
 /* -------------------------------- component -------------------------------- */
 
 export default function Landing() {
   const [query, setQuery] = useState('')
+  const [teaserOpen, setTeaserOpen] = useState(false)
   const [visibleAreas, setVisibleAreas] = useState(() => Array(AREAS.length).fill(false))
   const [activeSection, setActiveSection] = useState('hero')
   const [scrollProgress, setScrollProgress] = useState(0)
@@ -163,6 +106,7 @@ export default function Landing() {
   const [compassDocked, setCompassDocked] = useState(false)
   const [compassTraveling, setCompassTraveling] = useState(false)
   const [compassPos, setCompassPos] = useState({ left: 24, top: 18, ready: false })
+  const [moteMenuOpen, setMoteMenuOpen] = useState(false)
 
   const canvasRef = useRef(null)
   const heroRef = useRef(null)
@@ -176,18 +120,40 @@ export default function Landing() {
   const rafId = useRef(null)
   const travelTimer = useRef(null)
   const compassDockedRef = useRef(false)
+  const teaserPauseTimer = useRef(null)
 
-  const q = query.trim().toLowerCase()
-  const results = q
-    ? OPPORTUNITIES.filter(
-        (o) =>
-          o.title.toLowerCase().includes(q) ||
-          o.cat.toLowerCase().includes(q) ||
-          o.tags.some((t) => t.includes(q) || q.includes(t)),
-      ).slice(0, 5)
-    : []
+  const q = query.trim()
+  const teaser = teaserOpen && q ? buildTeaserCard(q) : null
 
-  /* ambient dust canvas in the hero */
+  useEffect(() => {
+    return () => clearTimeout(teaserPauseTimer.current)
+  }, [])
+
+  function onSearchChange(value) {
+    setQuery(value)
+    clearTimeout(teaserPauseTimer.current)
+    if (!value.trim()) {
+      setTeaserOpen(false)
+      return
+    }
+    teaserPauseTimer.current = setTimeout(() => setTeaserOpen(true), 480)
+  }
+
+  function onSearchKeyDown(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      clearTimeout(teaserPauseTimer.current)
+      if (query.trim()) setTeaserOpen(true)
+    }
+  }
+
+  function applyChip(chip) {
+    setQuery(chip)
+    clearTimeout(teaserPauseTimer.current)
+    setTeaserOpen(true)
+  }
+
+  /* ambient dust canvas — dense field with soft magnetic pull toward the cursor */
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -197,31 +163,38 @@ export default function Landing() {
     let w
     let h
 
-    const styles = getComputedStyle(document.documentElement)
-    const gold = styles.getPropertyValue('--pf-trail-gold').trim() || '#d9a756'
-    const accent = styles.getPropertyValue('--land-accent').trim() || '#3654a6'
-    const clay = styles.getPropertyValue('--pf-dust-clay').trim() || '#b5624a'
-    const moss = styles.getPropertyValue('--pf-dust-moss').trim() || '#6e8259'
-    const colors = [gold, accent, clay, moss]
+    const CREAM = '#F6F4EC'
+    const AMBER = '#d99a5c'
+    const BLUE = '#6b8fd4'
+
+    function pickColor() {
+      const roll = Math.random()
+      if (roll < 0.7) return CREAM
+      if (roll < 0.9) return AMBER
+      return BLUE
+    }
+
+    function makeParticles() {
+      const count = reduceMotion ? 0 : 55
+      return Array.from({ length: count }, () => ({
+        x: Math.random() * w,
+        y: Math.random() * h,
+        vx: (Math.random() - 0.5) * 0.15,
+        vy: (Math.random() - 0.5) * 0.15,
+        r: 1 + Math.random() * 2.5,
+        color: pickColor(),
+        alpha: 0.15 + Math.random() * 0.5,
+      }))
+    }
+
+    let particles = []
 
     function resize() {
       const rect = canvas.parentElement.getBoundingClientRect()
-      w = canvas.width = rect.width
-      h = canvas.height = rect.height
+      w = canvas.width = Math.max(1, Math.floor(rect.width))
+      h = canvas.height = Math.max(1, Math.floor(rect.height))
+      particles = makeParticles()
     }
-    resize()
-    window.addEventListener('resize', resize)
-
-    const count = reduceMotion ? 0 : 80
-    const particles = Array.from({ length: count }, () => ({
-      x: Math.random() * w,
-      y: Math.random() * h,
-      vx: (Math.random() - 0.5) * 0.15,
-      vy: (Math.random() - 0.5) * 0.15,
-      r: Math.random() * 1.5 + 0.4,
-      color: colors[Math.floor(Math.random() * colors.length)],
-      alpha: Math.random() * 0.5 + 0.25,
-    }))
 
     function tick() {
       ctx.clearRect(0, 0, w, h)
@@ -252,7 +225,10 @@ export default function Landing() {
       ctx.globalAlpha = 1
       raf = requestAnimationFrame(tick)
     }
-    tick()
+
+    resize()
+    window.addEventListener('resize', resize)
+    if (!reduceMotion) tick()
 
     const heroEl = heroRef.current
     function onMove(e) {
@@ -448,57 +424,65 @@ export default function Landing() {
 
       {/* nav */}
       <header
-        className="sticky top-0 z-40 flex items-center justify-between px-6 py-4 backdrop-blur-md"
+        className="landing-header sticky top-0 z-40 backdrop-blur-md"
         style={{
           borderBottom: '1px solid var(--land-border)',
           background: 'color-mix(in srgb, var(--land-bg) 78%, transparent)',
         }}
       >
-        <Link to="/" className="flex items-center gap-2">
-          {/* Slot reserves header space; the traveling compass overlays this when home */}
-          <span
-            ref={headerCompassSlotRef}
-            className="inline-block h-[18px] w-[18px] shrink-0"
-            aria-hidden="true"
-          />
-          <span className="f-display text-lg tracking-tight">Pathfinder</span>
-        </Link>
+        <div className="flex items-center justify-between gap-3 px-6 py-3">
+          <Link to="/" className="flex min-w-0 items-center gap-2">
+            <span
+              ref={headerCompassSlotRef}
+              className="inline-block h-[18px] w-[18px] shrink-0"
+              aria-hidden="true"
+            />
+            <span className="f-display truncate text-lg tracking-tight">Pathfinder</span>
+          </Link>
+
+          <div className="hidden md:block">
+            <PathfinderNavActions />
+          </div>
+
+          <button
+            type="button"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border outline-none focus-visible:ring-2 focus-visible:ring-[var(--land-accent)] md:hidden"
+            style={{ borderColor: 'var(--land-border)', color: '#d99a5c' }}
+            aria-label={moteMenuOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={moteMenuOpen}
+            onClick={() => setMoteMenuOpen((o) => !o)}
+          >
+            <DustMoteIcon size={20} />
+          </button>
+        </div>
+
         <nav
-          className="f-mono hidden items-center gap-6 text-xs uppercase tracking-widest md:flex"
+          className="landing-section-nav f-mono flex gap-5 overflow-x-auto px-6 pb-3 text-xs uppercase tracking-widest"
           style={{ color: 'var(--land-muted)' }}
+          aria-label="Areas"
         >
-          <a href="#advancement" className="opacity-80 hover:opacity-100">
+          <a href="#advancement" className="shrink-0 opacity-80 hover:opacity-100">
             Advancement
           </a>
-          <a href="#funding" className="opacity-80 hover:opacity-100">
+          <a href="#funding" className="shrink-0 opacity-80 hover:opacity-100">
             Funding
           </a>
-          <a href="#knowledge" className="opacity-80 hover:opacity-100">
+          <a href="#knowledge" className="shrink-0 opacity-80 hover:opacity-100">
             Knowledge
           </a>
-          <a href="#networking" className="opacity-80 hover:opacity-100">
+          <a href="#networking" className="shrink-0 opacity-80 hover:opacity-100">
             Networking
           </a>
         </nav>
-        <div className="flex items-center gap-2 sm:gap-3">
-          <ThemeToggle
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full border"
-            style={{ borderColor: 'var(--land-border)', color: 'var(--land-ink)' }}
-          />
-          <Link
-            to="/login"
-            className="rounded-full border px-3 py-2 text-sm sm:px-4"
-            style={{ borderColor: 'var(--land-border)', color: 'var(--land-ink)' }}
-          >
-            Sign in
-          </Link>
-          <Link
-            to="/register"
-            className="rounded-full px-3 py-2 text-sm font-medium sm:px-4"
-            style={{ background: 'var(--land-accent)', color: 'var(--land-cta-ink)' }}
-          >
-            Get started
-          </Link>
+
+        <div
+          className={`landing-mote-panel overflow-hidden md:hidden ${
+            moteMenuOpen ? 'landing-mote-panel-open' : ''
+          }`}
+        >
+          <div className="px-6 pb-4">
+            <PathfinderNavActions stacked />
+          </div>
         </div>
       </header>
 
@@ -539,37 +523,33 @@ export default function Landing() {
           </p>
 
           <div className="relative mx-auto max-w-xl">
-            <div
-              className="flex items-center gap-3 rounded-full px-5 py-4"
+            <form
+              className="field-shell flex items-center gap-3 rounded-full px-5 py-4"
               style={{ background: 'var(--land-card)', border: '1px solid var(--land-border)' }}
+              onSubmit={(e) => {
+                e.preventDefault()
+                clearTimeout(teaserPauseTimer.current)
+                if (query.trim()) setTeaserOpen(true)
+              }}
             >
-              <Search size={18} style={{ color: 'var(--land-muted)' }} />
+              <Search size={18} style={{ color: 'var(--land-muted)' }} aria-hidden="true" />
               <input
                 value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="e.g. research grant, remote job, mentorship"
+                onChange={(e) => onSearchChange(e.target.value)}
+                onKeyDown={onSearchKeyDown}
+                placeholder="e.g. medical lab jobs in Roysambu"
                 className="flex-1 bg-transparent text-sm outline-none placeholder:opacity-60 sm:text-base"
                 style={{ color: 'var(--land-ink)' }}
                 aria-label="Try a sample search"
               />
-            </div>
-
-            <p
-              className="f-mono mt-3 text-[11px] uppercase tracking-widest"
-              style={{ color: 'var(--land-muted)' }}
-            >
-              Or skip the typing —{' '}
-              <Link to="/register" className="underline" style={{ color: 'var(--land-accent)' }}>
-                sign up and tell Dust your situation
-              </Link>
-            </p>
+            </form>
 
             <div className="mt-4 flex flex-wrap justify-center gap-2">
               {CHIPS.map((c) => (
                 <button
                   key={c}
                   type="button"
-                  onClick={() => setQuery(c)}
+                  onClick={() => applyChip(c)}
                   className="f-mono rounded-full border px-3 py-1.5 text-xs opacity-80 hover:opacity-100"
                   style={{ borderColor: 'var(--land-border)', color: 'var(--land-accent)' }}
                 >
@@ -578,53 +558,65 @@ export default function Landing() {
               ))}
             </div>
 
-            {q && (
-              <div
-                className="mt-6 overflow-hidden rounded-2xl text-left"
-                style={{ border: '1px solid var(--land-border)' }}
-              >
-                {results.length > 0 ? (
-                  results.map((r, i) => (
-                    <Link
-                      key={r.title}
-                      to="/register"
-                      className="area-card flex items-start justify-between gap-4 px-5 py-4 transition hover:brightness-[1.03]"
-                      style={{
-                        borderBottom:
-                          i === results.length - 1 ? 'none' : '1px solid var(--land-border)',
-                        background: 'var(--land-card)',
-                        transitionDelay: `${i * 60}ms`,
-                      }}
-                    >
-                      <div>
-                        <p
-                          className="f-mono mb-1 text-[11px] uppercase tracking-widest"
-                          style={{ color: 'var(--land-gold)' }}
-                        >
-                          {r.cat}
-                        </p>
-                        <p className="text-sm sm:text-base">{r.title}</p>
-                        <p className="mt-1 text-xs" style={{ color: 'var(--land-muted)' }}>
-                          {r.meta}
-                        </p>
-                      </div>
-                      <ChevronRight
-                        size={16}
-                        style={{ color: 'var(--land-muted)' }}
-                        className="mt-1 shrink-0"
-                      />
-                    </Link>
-                  ))
-                ) : (
-                  <div
-                    className="px-5 py-6 text-sm"
-                    style={{ background: 'var(--land-card)', color: 'var(--land-muted)' }}
+            {teaser ? (
+              <div className="mt-10 text-left" aria-live="polite">
+                <article
+                  className="area-card overflow-hidden rounded-2xl px-5 py-5 sm:px-6 sm:py-6"
+                  style={{
+                    border: '1px solid var(--land-border)',
+                    background: 'var(--land-card)',
+                  }}
+                >
+                  <p
+                    className="f-mono mb-3 text-[10px] uppercase tracking-widest"
+                    style={{ color: 'var(--land-muted)' }}
                   >
-                    Nothing matches that yet — try &quot;grant&quot;, &quot;remote&quot;, or
-                    &quot;mentorship&quot;.
-                  </div>
-                )}
+                    Example
+                  </p>
+                  <p
+                    className="f-display text-lg leading-snug sm:text-xl"
+                    style={{
+                      color: 'var(--land-ink)',
+                      filter: 'blur(0.4px)',
+                      opacity: 0.88,
+                    }}
+                  >
+                    {teaser.title}
+                  </p>
+                  <p
+                    className="f-body mt-2 text-sm leading-relaxed"
+                    style={{
+                      color: 'var(--land-muted)',
+                      filter: 'blur(0.7px)',
+                      opacity: 0.9,
+                    }}
+                  >
+                    {teaser.meta}
+                  </p>
+                </article>
+
+                <p
+                  className="f-body mt-5 text-sm leading-relaxed sm:text-base"
+                  style={{ color: 'var(--land-ink)' }}
+                >
+                  The real ones are hiding behind a login. Sign in and Dust will dig them up.
+                </p>
+                <Link
+                  to="/register"
+                  className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium"
+                  style={{ color: 'var(--land-accent)' }}
+                >
+                  Sign up to see real matches
+                  <ChevronRight size={14} aria-hidden="true" />
+                </Link>
               </div>
+            ) : (
+              <p className="f-body mt-5 text-sm" style={{ color: 'var(--land-muted)' }}>
+                Or skip the typing —{' '}
+                <Link to="/register" className="underline" style={{ color: 'var(--land-accent)' }}>
+                  sign up and tell Dust your situation
+                </Link>
+              </p>
             )}
           </div>
         </div>

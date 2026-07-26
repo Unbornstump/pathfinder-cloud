@@ -87,7 +87,7 @@ export default function Login() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <label className="block">
             <span className="mb-1.5 block text-sm text-muted">Username</span>
-            <div className="flex items-center gap-2 rounded-[12px] border border-border px-3 py-2.5 focus-within:border-teal">
+            <div className="field-shell flex items-center gap-2 rounded-[12px] border border-border px-3 py-2.5">
               <User size={18} className="text-muted" />
               <input
                 className="w-full bg-transparent outline-none"
@@ -100,7 +100,7 @@ export default function Login() {
           </label>
           <label className="block">
             <span className="mb-1.5 block text-sm text-muted">Password</span>
-            <div className="flex items-center gap-2 rounded-[12px] border border-border px-3 py-2.5 focus-within:border-teal">
+            <div className="field-shell flex items-center gap-2 rounded-[12px] border border-border px-3 py-2.5">
               <Lock size={18} className="text-muted" />
               <input
                 type="password"
