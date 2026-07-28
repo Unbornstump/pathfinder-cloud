@@ -1,5 +1,5 @@
 # Config-driven sources. Only enabled entries run.
-# Live scrapers/APIs are stubs until credentials exist; CSV is the working path.
+# Live adapters: opportunity_desk (RSS), university_pages, ats_boards (Greenhouse/Lever), crossref.
 
 sources:
   - id: seed_csv_research
@@ -37,18 +37,54 @@ sources:
     source_type: scrape
     adapter: opportunity_desk
     categories: [research, academic]
-
-  - id: ats_boards_scrape
-    enabled: true
-    source_type: scrape
-    adapter: ats_boards
-    categories: [employment]
+    max_items: 40
+    feeds:
+      - https://opportunitydesk.org/feed/
+      - https://opportunitydesk.org/category/africa/feed/
 
   - id: university_pages_scrape
     enabled: true
     source_type: scrape
     adapter: university_pages
     categories: [research, academic]
+    max_items: 40
+    feeds:
+      - url: https://www.scholars4dev.com/feed/
+        organization: Scholars4Dev
+      - url: https://www.opportunitiesforafricans.com/feed/
+        organization: Opportunities for Africans
+    pages:
+      - url: https://www.ku.ac.ke/
+        organization: Kenyatta University
+        link_contains: [scholarship, career, fellowship, internship]
+
+  - id: ats_boards_scrape
+    enabled: true
+    source_type: scrape
+    adapter: ats_boards
+    categories: [employment]
+    max_items: 60
+    boards:
+      - provider: greenhouse
+        token: stripe
+        organization: Stripe
+      - provider: greenhouse
+        token: figma
+        organization: Figma
+      - provider: lever
+        token: netflix
+        organization: Netflix
+
+  - id: crossref_api
+    enabled: true
+    source_type: api
+    adapter: crossref
+    categories: [research, academic]
+    max_items: 40
+    rows: 15
+    queries:
+      - fellowship Africa
+      - research grant Kenya
 
   - id: grant_pdf_parse
     enabled: false

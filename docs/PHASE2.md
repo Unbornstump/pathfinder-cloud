@@ -1,8 +1,8 @@
 # Pathfinder / Alo alo — Opportunity Compass status
 
 This document tracks the eight-category personal intelligence architecture.
-Phase "compass" (current) ships schema-wide, config-driven ingestion (CSV path live),
-three-stage matching, research-wedge Moves, and tiered landing honesty.
+Phase "compass" ships schema-wide, config-driven ingestion (CSV + live multi-source
+crawlers), three-stage matching, research-wedge Moves, and tiered landing honesty.
 
 ## Done in this phase
 
@@ -13,7 +13,10 @@ three-stage matching, research-wedge Moves, and tiered landing honesty.
 | `SignalLog` + continuous ambition updates on save/apply/dismiss | Done |
 | `Match` with eligibility / ROI / per-user `why_summary` / `surfaced_as` | Done |
 | `Move` as its own object (not an Opportunity flag) | Done |
-| Ingestion packages + `sources.yaml` + CSV adapter | Done (API/scrape stubs) |
+| Ingestion packages + `sources.yaml` + CSV adapter | Done |
+| Live adapters: Opportunity Desk RSS, university feeds/pages, Greenhouse/Lever ATS, Crossref | Done |
+| Celery Beat schedule (combined ingest every 6h) + Redis via docker-compose | Done |
+| `IngestionRun` + `/api/ingestion/status/` per-source freshness | Done |
 | Dedup + expiry (`normalize_opportunities`) | Done for ingested + seeded rows |
 | Per-category ROI files (research, employment, experiential) | Done |
 | Surface API: `/api/matches/`, `/api/moves/`, dismiss | Done |
@@ -24,7 +27,7 @@ three-stage matching, research-wedge Moves, and tiered landing honesty.
 | Stage | Focus |
 |---|---|
 | **Now** | Research & innovation + funding/fellowships (Tier 2) + employment & experiential (Tier 1) |
-| **Next** | Live scrapers for 1–2 fellowship aggregators; tighten eligibility with real constraints |
+| **Next** | Tighten eligibility with real constraints; HTTP re-verification of closed listings |
 | **Then** | Professional dev, social impact, entrepreneurship, cultural exchange (Tier 3 → Tier 2) |
 
 ## Layer map
@@ -35,11 +38,37 @@ ingestion/ → normalization/ → matching_engine/ (+ user_vector/) → surface/
 
 Management commands:
 
-- `ingest_from_config` — run enabled YAML sources
+- `ingest_from_config` — run enabled YAML sources (+ normalize)
 - `normalize_opportunities` — dedup + expiry
 - `recompute_matches` — stages 1–3 + research Moves
 - `process_signals` — refresh ambition_vector
 - `seed_opportunities` — demo data
+
+### Live ingest + Celery
+
+```bash
+# from repo root
+docker compose up -d redis
+cd backend
+pip install -r requirements.txt
+# optional but required for Crossref:
+# set CROSSREF_MAILTO=you@example.com in backend/.env
+
+py manage.py migrate
+py manage.py ingest_from_config
+
+# scheduled (from backend/, Redis must be up)
+celery -A config worker -l info
+celery -A config beat -l info
+```
+
+Enabled live sources (see `ingestion/config/sources.yaml`):
+
+- `opportunity_desk_scrape` — RSS
+- `university_pages_scrape` — RSS + HTML link harvest
+- `ats_boards_scrape` — Greenhouse / Lever public JSON
+- `crossref_api` — Works API (needs `CROSSREF_MAILTO`)
+- `seed_csv_research` — CSV baseline
 
 ## Trust blockers (still required before marketing as a full aggregator)
 
@@ -50,7 +79,6 @@ Management commands:
 ## Out of scope until wedge is trusted
 
 - Real Eventbrite / LinkedIn / Reddit adapters
-- Celery beat (commands are Celery-ready wrappers later)
 - `/for-employers`, `/for-universities`
 - Flutter client
 

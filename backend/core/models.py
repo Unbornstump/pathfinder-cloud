@@ -170,6 +170,11 @@ class Opportunity(models.Model):
         db_index=True,
         help_text="platform + original listing id for dedup",
     )
+    source_url = models.URLField(
+        max_length=500,
+        blank=True,
+        help_text="Canonical listing / apply URL from the source",
+    )
     eligibility_rules = models.JSONField(
         default=dict,
         blank=True,
@@ -318,3 +323,21 @@ class Notification(models.Model):
 
     def __str__(self):
         return self.message[:60]
+
+
+class IngestionRun(models.Model):
+    """One fetch attempt for a configured source id."""
+
+    source_id = models.CharField(max_length=64, db_index=True)
+    started_at = models.DateTimeField()
+    finished_at = models.DateTimeField(null=True, blank=True)
+    ok = models.BooleanField(default=True)
+    rows_fetched = models.PositiveIntegerField(default=0)
+    error = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["-started_at"]
+
+    def __str__(self):
+        status = "ok" if self.ok else "fail"
+        return f"{self.source_id} {status} ({self.rows_fetched} rows)"

@@ -136,6 +136,7 @@ class OpportunitySerializer(serializers.ModelSerializer):
             "deadline_tz",
             "source_type",
             "source_id",
+            "source_url",
             "status",
             "verified",
             "created_at",

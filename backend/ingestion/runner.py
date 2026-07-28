@@ -7,8 +7,12 @@ from pathlib import Path
 from django.conf import settings
 
 from ingestion.sources.api import stubs as api_stubs
+from ingestion.sources.api.crossref import fetch_crossref
 from ingestion.sources.csv_manual import fetch_csv
 from ingestion.sources.pdf_parse import stubs as pdf_stubs
+from ingestion.sources.scrapers.ats_boards import scrape_ats_boards
+from ingestion.sources.scrapers.opportunity_desk import scrape_opportunity_desk
+from ingestion.sources.scrapers.university_pages import scrape_university_pages
 from ingestion.sources.scrapers import stubs as scrape_stubs
 from ingestion.sources.social_signal import stubs as social_stubs
 
@@ -22,11 +26,11 @@ ADAPTERS = {
     "eventbrite": api_stubs.fetch_eventbrite,
     "linkedin": api_stubs.fetch_linkedin,
     "github": api_stubs.fetch_github,
-    "crossref": api_stubs.fetch_crossref,
-    "university_pages": scrape_stubs.scrape_university_pages,
-    "ats_boards": scrape_stubs.scrape_ats_boards,
+    "crossref": fetch_crossref,
+    "university_pages": scrape_university_pages,
+    "ats_boards": scrape_ats_boards,
     "gov_gazette": scrape_stubs.scrape_gov_gazette,
-    "opportunity_desk": scrape_stubs.scrape_opportunity_desk,
+    "opportunity_desk": scrape_opportunity_desk,
     "grant_notices": pdf_stubs.parse_grant_notices,
     "ngo_reports": pdf_stubs.parse_ngo_reports,
     "reddit": social_stubs.listen_reddit,
@@ -59,9 +63,8 @@ def resolve_path(raw: str | None) -> str | None:
     return str(candidate)
 
 
-def run_enabled_sources(only_ids: list[str] | None = None) -> list[dict]:
-    """Fetch raw records from enabled (or selected) sources."""
-    results: list[dict] = []
+def iter_enabled_sources(only_ids: list[str] | None = None):
+    """Yield (source_entry, raw_rows) for enabled or selected sources."""
     for entry in load_sources_config():
         sid = entry.get("id")
         if only_ids and sid not in only_ids:
@@ -75,9 +78,18 @@ def run_enabled_sources(only_ids: list[str] | None = None) -> list[dict]:
         cfg = dict(entry)
         if cfg.get("path"):
             cfg["path"] = resolve_path(cfg["path"])
+        rows = []
         for row in adapter(cfg) or []:
             row.setdefault("source_type", entry.get("source_type", "manual"))
             if entry.get("category") and not row.get("category"):
                 row["category"] = entry["category"]
-            results.append(row)
+            rows.append(row)
+        yield entry, rows
+
+
+def run_enabled_sources(only_ids: list[str] | None = None) -> list[dict]:
+    """Fetch raw records from enabled (or selected) sources."""
+    results: list[dict] = []
+    for _entry, rows in iter_enabled_sources(only_ids=only_ids):
+        results.extend(rows)
     return results

@@ -79,6 +79,7 @@ def classify_raw_listing(raw: dict) -> dict:
         "deadline": deadline,
         "source_type": raw.get("source_type") or "scrape",
         "source_id": raw.get("source_id") or f"{raw.get('source', 'ext')}:{hash(title) & 0xFFFF:x}",
+        "source_url": (raw.get("source_url") or raw.get("url") or "").strip(),
         "eligibility_rules": raw.get("eligibility_rules")
         or {"citizenship": [], "location": [], "budget_required": False},
         "roi_inputs": raw.get("roi_inputs")

@@ -1,7 +1,6 @@
 from django.core.management.base import BaseCommand
 
-from ingestion.runner import run_enabled_sources
-from normalization.upsert import upsert_raw
+from ingestion.pipeline import run_ingest
 
 
 class Command(BaseCommand):
@@ -13,19 +12,30 @@ class Command(BaseCommand):
             nargs="*",
             help="Optional source ids to run (forces run even if disabled)",
         )
+        parser.add_argument(
+            "--no-normalize",
+            action="store_true",
+            help="Skip dedup/expiry pass after ingest",
+        )
 
     def handle(self, *args, **options):
         only = options.get("only")
-        rows = run_enabled_sources(only_ids=only)
-        created = merged = 0
-        for raw in rows:
-            _, action = upsert_raw(raw)
-            if action == "created":
-                created += 1
-            else:
-                merged += 1
+        summary = run_ingest(only_ids=only, normalize=not options.get("no_normalize"))
         self.stdout.write(
             self.style.SUCCESS(
-                f"Ingest complete: {len(rows)} rows -> {created} created, {merged} merged."
+                f"Ingest complete: {summary['created']} created, "
+                f"{summary['merged']} merged across {len(summary['sources'])} sources."
             )
         )
+        for src in summary["sources"]:
+            mark = "ok" if src["ok"] else "FAIL"
+            self.stdout.write(
+                f"  [{mark}] {src['source_id']}: {src['rows_fetched']} rows"
+                + (f" — {src['error']}" if src.get("error") else "")
+            )
+        if summary.get("normalize"):
+            n = summary["normalize"]
+            self.stdout.write(
+                f"Normalize: kept={n['kept']}, removed_dupes={n['removed_dupes']}, "
+                f"expired={n['expired']}, refreshed={n['refreshed']}."
+            )

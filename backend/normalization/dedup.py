@@ -57,8 +57,8 @@ def find_duplicate(raw: dict, exclude_id: int | None = None) -> Opportunity | No
 def merge_into_canonical(canonical: Opportunity, raw: dict) -> Opportunity:
     """Keep canonical; enrich blank fields from raw."""
     changed = False
-    for field in ("description", "organization", "location", "requirements", "why_summary"):
-        if not getattr(canonical, field) and raw.get(field):
+    for field in ("description", "organization", "location", "requirements", "why_summary", "source_url"):
+        if not getattr(canonical, field, None) and raw.get(field):
             setattr(canonical, field, raw[field])
             changed = True
     if raw.get("tags"):

@@ -16,6 +16,16 @@ ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "").strip()
 SCOUT_LLM_API_KEY = os.getenv("SCOUT_LLM_API_KEY", "").strip()
 DUST_LLM_API_KEY = os.getenv("DUST_LLM_API_KEY", "").strip() or SCOUT_LLM_API_KEY
+CROSSREF_MAILTO = os.getenv("CROSSREF_MAILTO", "").strip()
+
+# Celery / Redis
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://127.0.0.1:6379/0")
+CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", CELERY_BROKER_URL)
+CELERY_TIMEZONE = "UTC"
+CELERY_TASK_TRACK_STARTED = True
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
 
 INSTALLED_APPS = [
     "django.contrib.admin",

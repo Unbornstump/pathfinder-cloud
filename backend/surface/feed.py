@@ -49,6 +49,7 @@ def serialize_match(match, profile, interest_counts: dict | None = None) -> dict
         "deadline_local": deadline_local_iso(opp),
         "deadline_tz": opp.deadline_tz,
         "source_type": opp.source_type,
+        "source_url": getattr(opp, "source_url", "") or "",
         "status": opp.status,
         "verified": opp.verified or opp.status == "live",
         "created_at": opp.created_at.isoformat() if opp.created_at else None,
@@ -92,6 +93,7 @@ def serialize_listing(opp, *, badge: str = "trending", interest_count: int = 0) 
         "deadline": opp.deadline.isoformat() if opp.deadline else None,
         "deadline_local": deadline_local_iso(opp),
         "source_type": opp.source_type,
+        "source_url": getattr(opp, "source_url", "") or "",
         "verified": opp.verified or opp.status == "live",
         "updated_at": opp.updated_at.isoformat() if opp.updated_at else None,
         "interest_count": interest_count,
@@ -153,18 +155,51 @@ def build_trending_feed(profile, limit: int = 8) -> list[dict]:
 
 
 def ingestion_status() -> dict:
-    from core.models import Opportunity
+    from core.models import IngestionRun, Opportunity
+    from ingestion.runner import load_sources_config
 
-    latest = (
+    latest_run = (
+        IngestionRun.objects.filter(ok=True)
+        .order_by("-finished_at")
+        .values_list("finished_at", flat=True)
+        .first()
+    )
+    latest_opp = (
         Opportunity.objects.exclude(status="expired")
         .order_by("-updated_at")
         .values_list("updated_at", flat=True)
         .first()
     )
+    last_scraped = latest_run or latest_opp
     count = Opportunity.objects.exclude(status="expired").count()
+
+    sources = []
+    enabled_ids = [
+        e.get("id")
+        for e in load_sources_config()
+        if e.get("enabled") and e.get("id")
+    ]
+    for sid in enabled_ids:
+        run = (
+            IngestionRun.objects.filter(source_id=sid)
+            .order_by("-started_at")
+            .first()
+        )
+        sources.append(
+            {
+                "source_id": sid,
+                "last_run_at": run.finished_at.isoformat()
+                if run and run.finished_at
+                else None,
+                "ok": run.ok if run else None,
+                "rows_fetched": run.rows_fetched if run else None,
+            }
+        )
+
     return {
-        "last_scraped_at": latest.isoformat() if latest else None,
+        "last_scraped_at": last_scraped.isoformat() if last_scraped else None,
         "live_count": count,
+        "sources": sources,
     }
 
 

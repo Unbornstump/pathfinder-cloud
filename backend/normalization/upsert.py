@@ -53,6 +53,7 @@ def upsert_raw(raw: dict) -> tuple[Opportunity, str]:
         "deadline": deadline,
         "source_type": classified.get("source_type") or OpportunitySourceType.MANUAL,
         "source_id": (classified.get("source_id") or "").strip(),
+        "source_url": (classified.get("source_url") or "").strip()[:500],
         "eligibility_rules": classified.get("eligibility_rules") or {},
         "roi_inputs": classified.get("roi_inputs")
         or {"effort_estimate": 0.5, "value_estimate": 0.5},
